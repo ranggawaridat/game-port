@@ -1,12 +1,19 @@
-# Image untuk menjalankan ETL (memuat 210 port dari sumber daring).
-# Dipakai lewat profile "tools":
-#   docker compose run --rm etl
+# Image untuk menjalankan ETL (memuat port dari sumber daring).
+#
+# Dipakai dua cara:
+#   docker compose run --rm etl                    # sekali jalan, manual
+#   docker compose --profile cron up -d etl-cron   # terjadwal harian
 FROM python:3.12-slim
 
 WORKDIR /app
 
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates tzdata \
+ && rm -rf /var/lib/apt/lists/*
+
 RUN pip install --no-cache-dir "psycopg[binary]==3.2.*"
 
 COPY etl ./etl
+RUN chmod +x etl/cron-etl.sh
 
 CMD ["python", "etl/etl.py"]

@@ -57,8 +57,8 @@ services:
       - "${APP_BIND:-127.0.0.1}:${APP_PORT:-8181}:8181"
     networks: [gameport]
 
-  # Muat 210 port dari sumber (butuh internet). Bukan daemon:
-  #   docker compose run --rm etl
+  # Muat data dari sumber (butuh internet). Bukan daemon:
+  #   docker compose --profile tools run --rm etl
   etl:
     build:
       context: .
@@ -76,6 +76,38 @@ services:
     volumes:
       - ./etl:/app/etl:ro
     command: ["python", "etl/etl.py"]
+    networks: [gameport]
+
+  # ---------------------------------------------------------------
+  # Crawl terjadwal. Berjalan sebagai daemon crond di dalam image ETL.
+  #   docker compose --profile cron up -d etl-cron
+  #   docker compose --profile cron logs -f etl-cron
+  #
+  # Hanya memuat ulang bila sumber berubah (ETag). Tanpa perubahan,
+  # run harian tidak menyentuh database sama sekali.
+  # ---------------------------------------------------------------
+  etl-cron:
+    build:
+      context: .
+      dockerfile: Dockerfile.etl
+    container_name: gameport-etl-cron
+    profiles: ["cron"]
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GAMEDB_HOST: db
+      GAMEDB_PORT: "5432"
+      GAMEDB_NAME: ${GAMEDB_NAME:-gamedb}
+      GAMEDB_USER: ${GAMEDB_USER:-gameport}
+      GAMEDB_PASSWORD: ${GAMEDB_PASSWORD:?set GAMEDB_PASSWORD di .env}
+      TZ: ${ETL_TZ:-Asia/Jakarta}
+      ETL_MIN_ROWS: ${ETL_MIN_ROWS:-100}
+    volumes:
+      - ./etl:/app/etl
+    # crond busybox dalam mode foreground (-f), log ke stdout (-l 8)
+    command: ["crond", "-f", "-l", "8", "-c", "/app/etl"]
     networks: [gameport]
 
 volumes:

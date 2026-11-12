@@ -61,7 +61,7 @@ docker compose down                # hentikan, data tetap
 docker compose down -v             # hentikan + hapus volume (mulai dari nol)
 ```
 
-### Memuat 210 port dari sumber asli
+### Memuat katalog lengkap dari sumber asli
 
 Seed hanya berisi 4 contoh. Untuk memuat katalog lengkap:
 
@@ -71,6 +71,41 @@ docker compose --profile tools run --rm etl
 
 ETL mengambil daftar dari `awesome-android-native-ports`, mem-parse tabel
 markdown, lalu meng-`UPSERT` ke database. Aman dijalankan berulang.
+
+### Crawl otomatis (terjadwal)
+
+```bash
+docker compose --profile cron up -d etl-cron
+docker compose --profile cron logs -f etl-cron
+```
+
+Berjalan **setiap hari 20:15 WIB** (atur lewat `etl/crontab` dan `ETL_TZ`).
+
+Kenapa 20:15:
+
+- Sumber diperbarui tidak terjadwal; commit terakhirnya siang–sore waktu pembuat.
+  20:15 memastikan perubahan hari itu ikut tertangkap tanpa menunggu besok.
+- Tidak berbarengan dengan laporan VPS 08:00.
+- **Biaya nyaris nol**: ETL memakai `ETag`/`If-None-Match`. Kalau sumber belum
+  berubah, server membalas `304` dan tidak ada satu baris pun ditulis.
+
+Perilaku yang perlu diketahui:
+
+| Situasi | Hasil | Exit |
+|---|---|---|
+| Sumber berubah | parse + UPSERT, log `+N baru, ~N diperbarui` | 0 |
+| Sumber tidak berubah | `304 Not Modified`, DB tidak disentuh | 0 |
+| Sumber berubah format / baris < `ETL_MIN_ROWS` | dibatalkan, DB **tidak** disentuh | 2 |
+| Jaringan/DB gagal | error | ≠ 0 |
+
+Pengaman `ETL_MIN_ROWS` (default 100) mencegah sumber yang tiba-tiba rusak
+mengosongkan katalog.
+
+Paksa muat ulang tanpa menunggu perubahan:
+
+```bash
+docker compose --profile tools run --rm etl python etl/etl.py --force
+```
 
 ---
 

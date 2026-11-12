@@ -25,6 +25,10 @@ from collections import Counter
 SOURCE_URL = "https://raw.githubusercontent.com/abduznik/awesome-android-native-ports/main/README.md"
 ENV_PATH = os.environ.get("HERMES_ENV", "/opt/data/.env")
 
+# Pengaman: kalau sumber tiba-tiba menghasilkan baris jauh lebih sedikit,
+# anggap formatnya berubah dan jangan sentuh database.
+MIN_EXPECTED_ROWS = int(os.environ.get("ETL_MIN_ROWS", "100"))
+
 CATEGORY_MAP = {
     "Source Ports & Engine Reimplementations": ("source-port", "Source Port / Reimplementasi Engine", 1),
     "Decompilation-Based Ports": ("decompilation", "Port Berbasis Dekompilasi", 2),
@@ -90,10 +94,42 @@ def needs_own_data(desc):
         r"no game data included|no game assets included|no copyrighted|you supply|you provide", d))
 
 
-def fetch(url):
-    req = urllib.request.Request(url, headers={"User-Agent": "hermes-game-port-etl/1.0"})
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return r.read().decode("utf-8", errors="replace")
+def fetch(url, etag=None):
+    """Unduh url. Bila etag diberikan, pakai If-None-Match.
+
+    Mengembalikan (body, etag_baru, berubah). body None bila 304 Not Modified.
+    """
+    headers = {"User-Agent": "hermes-game-port-etl/1.0"}
+    if etag:
+        headers["If-None-Match"] = etag
+    req = urllib.request.Request(url, headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            body = r.read().decode("utf-8", errors="replace")
+            return body, r.headers.get("ETag"), True
+    except urllib.error.HTTPError as e:
+        if e.code == 304:
+            return None, etag, False
+        raise
+
+
+def read_etag(path):
+    try:
+        with open(path, encoding="utf-8") as f:
+            return f.read().strip() or None
+    except FileNotFoundError:
+        return None
+
+
+def write_etag(path, etag):
+    """Tulis etag secara atomik. Hanya dipanggil setelah load sukses."""
+    if not etag:
+        return
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write(etag)
+    os.replace(tmp, path)
 
 
 ROW_RE = re.compile(
@@ -216,15 +252,38 @@ def main():
     ap.add_argument("--file", help="pakai markdown lokal, bukan unduh")
     ap.add_argument("--schema", help="terapkan schema.sql (destruktif: drop & create)")
     ap.add_argument("--out", help="simpan hasil parse sebagai JSON")
+    ap.add_argument("--force", action="store_true",
+                    help="abaikan ETag, unduh dan muat ulang walau sumber tak berubah")
     args = ap.parse_args()
 
     log(f"[1/4] Sumber: {'file lokal ' + args.file if args.file else SOURCE_URL}")
-    markdown = open(args.file, encoding="utf-8").read() if args.file else fetch(SOURCE_URL)
-    log(f"      {len(markdown):,} karakter")
+
+    etag_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".etag")
+    old_etag = None if args.force or args.file else read_etag(etag_file)
+    new_etag = None
+
+    if args.file:
+        markdown = open(args.file, encoding="utf-8").read()
+        log(f"      {len(markdown):,} karakter (file lokal)")
+    else:
+        markdown, new_etag, changed = fetch(SOURCE_URL, etag=old_etag)
+        if not changed:
+            log("      304 Not Modified — sumber belum berubah, tidak ada yang dimuat")
+            log("      (pakai --force untuk tetap memuat ulang)")
+            return
+        log(f"      {len(markdown):,} karakter")
 
     log("[2/4] Parsing tabel…")
     rows, _ = parse(markdown)
     log(f"      {len(rows)} port terparse")
+
+    # Pengaman: sumber yang tiba-tiba kosong/rusak jangan sampai mengosongkan DB.
+    if len(rows) < MIN_EXPECTED_ROWS:
+        log(f"      BATAL: hanya {len(rows)} baris terparse "
+            f"(minimum {MIN_EXPECTED_ROWS}). Sumber mungkin berubah format. "
+            f"Database tidak diubah.")
+        return 2
+
     for k, v in Counter(r["category_slug"] for r in rows).most_common():
         log(f"        {k:<20} {v}")
     log(f"      status: {dict(Counter(r['status_slug'] for r in rows))}")
@@ -253,16 +312,23 @@ def main():
     cur.execute("INSERT INTO etl_runs (source_url) VALUES (%s) RETURNING id", (SOURCE_URL,))
     run_id = cur.fetchone()[0]
     ins, upd = upsert(cur, rows)
+    # Simpan juga ETag di catatan run sebagai jejak versi sumber.
     cur.execute("""UPDATE etl_runs SET finished_at = now(), total_baris = %s,
-                   total_insert = %s, total_update = %s WHERE id = %s""",
-                (len(rows), ins, upd, run_id))
+                   total_insert = %s, total_update = %s, catatan = %s WHERE id = %s""",
+                (len(rows), ins, upd, new_etag, run_id))
     conn.commit()
 
     cur.execute("SELECT count(*) FROM ports")
     total = cur.fetchone()[0]
     log(f"      selesai: +{ins} baru, ~{upd} diperbarui, {total} total di tabel ports")
+
+    # ETag disimpan HANYA setelah load sukses, supaya kegagalan tidak
+    # "menandai" versi ini sudah terproses.
+    if new_etag and not args.file:
+        write_etag(etag_file, new_etag)
+
     conn.close()
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main() or 0)
