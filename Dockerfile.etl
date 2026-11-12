@@ -1,0 +1,12 @@
+# Image untuk menjalankan ETL (memuat 210 port dari sumber daring).
+# Dipakai lewat profile "tools":
+#   docker compose run --rm etl
+FROM python:3.12-slim
+
+WORKDIR /app
+
+RUN pip install --no-cache-dir "psycopg[binary]==3.2.*"
+
+COPY etl ./etl
+
+CMD ["python", "etl/etl.py"]

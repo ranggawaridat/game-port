@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GamePort — Port Native Android dari Game PC &amp; Konsol</title>
+<meta name="description" content="Katalog port native Android dari game PC dan konsol: source port, dekompilasi, dan rekompilasi statis.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="/"><span class="dot"></span> GamePort</a>
+    <nav class="nav-links">
+      <a href="#katalog">Katalog</a>
+      <a href="#tentang">Tentang</a>
+    </nav>
+    <div class="db-badge" id="dbBadge"><span class="pip"></span><span id="dbText">menghubungkan…</span></div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Port Native · Tanpa Emulator</div>
+    <h1>Game PC &amp; konsol, <em>jalan native</em> di Android.</h1>
+    <p class="lede">
+      Katalog port native — source port, dekompilasi, dan rekompilasi statis yang menjalankan
+      kode game langsung di perangkat, bukan emulasi. Seluruh data dibaca dari PostgreSQL.
+    </p>
+    <div class="stats" id="stats">
+      <div class="stat"><div class="n">—</div><div class="l">Total Port</div></div>
+      <div class="stat"><div class="n">—</div><div class="l">Author</div></div>
+      <div class="stat"><div class="n">—</div><div class="l">Stabil</div></div>
+      <div class="stat"><div class="n">—</div><div class="l">Butuh Data Asli</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="wrap" id="katalog">
+  <div class="controls">
+    <div class="search">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+      </svg>
+      <input id="q" type="search" placeholder="Cari game, deskripsi, atau author…" autocomplete="off">
+    </div>
+    <select id="statusSel"><option value="">Semua status</option></select>
+    <select id="platformSel"><option value="">Semua platform</option></select>
+    <select id="sortSel">
+      <option value="kategori">Urut: Kategori</option>
+      <option value="nama">Urut: Nama A–Z</option>
+      <option value="nama-desc">Urut: Nama Z–A</option>
+      <option value="status">Urut: Kematangan</option>
+    </select>
+    <div class="chips" id="catChips"></div>
+  </div>
+
+  <main>
+    <div class="meta">
+      <span id="resultInfo">memuat…</span>
+      <span id="queryInfo"></span>
+    </div>
+    <div id="content">
+      <div class="state"><div class="spinner"></div><div class="big">Mengambil data…</div></div>
+    </div>
+    <div class="pager" id="pager" hidden>
+      <button id="prev">← Sebelumnya</button>
+      <div class="info" id="pageInfo"></div>
+      <button id="next">Berikutnya →</button>
+    </div>
+  </main>
+</section>
+
+<footer id="tentang">
+  <div class="wrap foot-row">
+    <div>
+      Data dari
+      <a href="https://github.com/abduznik/awesome-android-native-ports" target="_blank" rel="noopener">awesome-android-native-ports</a>
+      · dimuat ke PostgreSQL lewat ETL.
+    </div>
+    <div class="mono" id="footInfo">—</div>
+  </div>
+</footer>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
