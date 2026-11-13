@@ -1,0 +1,83 @@
+# =============================================================================
+# Caddyfile — GamePort dengan domain + HTTPS otomatis
+#
+# Domain : gameport.web.id
+# IP VPS : 149.41.192.124
+#
+# Arsitektur:
+#   Internet → Caddy (host :443, HTTPS) → 172.18.0.3:8181 (container) → GamePort
+#
+# ---------------------------------------------------------------------------
+# CARA PASANG (di host)
+#
+#   sudo cp Caddyfile.domain /etc/caddy/Caddyfile
+#   sudo caddy validate --config /etc/caddy/Caddyfile
+#   sudo systemctl reload caddy
+#
+# Caddy otomatis meminta sertifikat Let's Encrypt untuk gameport.web.id dan
+# www.gameport.web.id. Tidak ada certbot, tidak ada cron renewal.
+#
+# SYARAT — ketiganya harus beres sebelum reload:
+#   1. DNS A record gameport.web.id → 149.41.192.124  (cek: dig +short)
+#   2. Port 80 terbuka  (Let's Encrypt pakai ini untuk verifikasi HTTP-01)
+#   3. Port 443 terbuka (untuk HTTPS)
+#      Buka di DUA tempat: ufw di server DAN Security Group di console Tencent.
+#
+# Kalau DNS belum mengarah, Caddy akan gagal minta sertifikat dan mengulang
+# terus. Lihat: sudo journalctl -u caddy -n 50 --no-pager
+# ---------------------------------------------------------------------------
+#
+# PENTING: di sini site address berupa NAMA DOMAIN, bukan ":80".
+# Itulah yang membuat Caddy mengaktifkan HTTPS otomatis.
+# =============================================================================
+
+gameport.web.id {
+    encode zstd gzip
+
+    # Batasi ukuran unggahan gambar (5 MB + margin)
+    request_body {
+        max_size 8MB
+    }
+
+    header {
+        # Paksa HTTPS selama 1 tahun. Hanya kirim di respons HTTPS.
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options nosniff
+        X-Frame-Options SAMEORIGIN
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+    }
+
+    # Panel admin jangan diindeks mesin pencari
+    @admin path /admin*
+    header @admin X-Robots-Tag "noindex, nofollow, noarchive, noimageindex"
+
+    # Teruskan ke GamePort di dalam container Hermes.
+    # Bila IP container berubah setelah recreate, cari yang baru:
+    #   docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' alpha-hermes
+    reverse_proxy 172.18.0.3:8181 {
+        # Wajib: dipakai GamePort untuk menandai cookie sesi sebagai Secure
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Real-IP {remote_host}
+        transport http {
+            read_timeout 60s
+            write_timeout 60s
+        }
+    }
+
+    # Cache aset statis di browser selama 7 hari
+    @statis path /static/* /uploads/*
+    header @statis Cache-Control "public, max-age=604800"
+
+    log {
+        output file /var/log/caddy/gameport.log {
+            roll_size 10MB
+            roll_keep 3
+        }
+    }
+}
+
+# www diarahkan ke domain utama supaya tidak ada duplikat konten di mesin pencari
+www.gameport.web.id {
+    redir https://gameport.web.id{uri} permanent
+}
