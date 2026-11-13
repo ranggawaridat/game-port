@@ -30,3 +30,7 @@ Thumbs.db
 pgdata/
 # --- state ETL ---
 etl/.etag
+
+# --- unggahan runtime ---
+uploads/*
+!uploads/.gitkeep

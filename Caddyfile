@@ -1,0 +1,54 @@
+# =============================================================================
+# Caddyfile — publish GamePort
+#
+# Ganti gameport.example.com dengan domainmu, lalu:
+#   sudo cp Caddyfile /etc/caddy/Caddyfile
+#   sudo systemctl reload caddy
+#
+# Caddy otomatis membuat sertifikat HTTPS (Let's Encrypt) bila domain
+# sudah mengarah ke IP server ini dan port 80/443 terbuka.
+# =============================================================================
+
+gameport.example.com {
+    encode zstd gzip
+
+    # Batasi ukuran upload gambar (5 MB + margin)
+    request_body {
+        max_size 8MB
+    }
+
+    # Header keamanan
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+    }
+
+    # Panel admin: jangan diindeks mesin pencari
+    @admin path /panel-x7k2*
+    header @admin X-Robots-Tag "noindex, nofollow, noarchive"
+
+    reverse_proxy 127.0.0.1:8181 {
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Real-IP {remote_host}
+    }
+
+    # Cache aset statis
+    @statis path /static/* /uploads/*
+    header @statis Cache-Control "public, max-age=604800"
+
+    log {
+        output file /var/log/caddy/gameport.log {
+            roll_size 10MB
+            roll_keep 3
+        }
+    }
+}
+
+# ---------- Akses tanpa domain (opsional) ----------
+# Kalau belum punya domain, pakai ini untuk uji lokal:
+#
+# :80 {
+#     reverse_proxy 127.0.0.1:8181
+# }

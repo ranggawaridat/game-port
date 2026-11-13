@@ -4,246 +4,169 @@ Katalog port native Android dari game PC & konsol — source port, dekompilasi,
 dan rekompilasi statis yang menjalankan kode game langsung di perangkat,
 bukan emulasi.
 
-**Backend Go · PostgreSQL · frontend vanilla HTML/CSS/JS · Docker Compose**
+**Backend Go · PostgreSQL · frontend vanilla HTML/CSS/JS · panel admin bawaan**
+
+Konten diisi **manual** lewat panel admin. Tidak ada scraping.
 
 ![GamePort](docs/screenshot.png)
 
 ---
 
-## Isi
+## Fitur
 
-- [Arsitektur](#arsitektur)
-- [Menjalankan dengan Docker](#menjalankan-dengan-docker)
-- [Menjalankan tanpa Docker](#menjalankan-tanpa-docker)
-- [Struktur project](#struktur-project)
-- [API](#api)
-- [Database](#database)
-- [Memuat data dari sumber](#memuat-data-dari-sumber)
-- [Pengembangan](#pengembangan)
+**Publik**
+- Katalog dengan gambar sampul, versi, ukuran berkas, genre, dan platform
+- Pencarian teks, filter kategori/genre/platform, 5 mode pengurutan
+- Hitungan tampilan dan unduhan per game
+- Responsif, tema gelap, tanpa framework
 
----
-
-## Arsitektur
-
-```
-┌──────────────┐     HTTP/JSON      ┌──────────────┐     pgx      ┌──────────────┐
-│   Browser    │ ─────────────────► │  Go backend  │ ───────────► │  PostgreSQL  │
-│  (vanilla)   │ ◄───────────────── │  :8181       │ ◄─────────── │  gamedb      │
-└──────────────┘                    └──────────────┘              └──────────────┘
-```
-
-Frontend **tidak** menyimpan data apa pun. Semua angka, kartu, dan filter
-berasal dari API, yang membaca view PostgreSQL. Tidak ada kredensial database
-di sisi klien.
+**Admin** (path rahasia, tidak ditautkan dari publik)
+- Statistik: total view, unduh, grafik 14 hari, game paling dilihat, pencarian teratas
+- CRUD lengkap: tambah, edit, hapus port
+- Unggah gambar sampul (maks 5 MB, diverifikasi magic bytes)
+- Status draf — konten bisa disimpan tanpa dipublikasikan
+- Sesi cookie 12 jam, disimpan di database
 
 ---
 
-## Menjalankan dengan Docker
+## Jalankan cepat
 
 ```bash
-cp .env.example .env
-# edit .env, isi GAMEDB_PASSWORD dengan password yang kuat
-
+cp .env.example .env     # isi GAMEDB_PASSWORD + ADMIN_PASSWORD
 docker compose up -d --build
 ```
 
-Buka <http://127.0.0.1:8181>.
+Buka <http://127.0.0.1:8181>. Panel admin di `http://127.0.0.1:8181/panel-x7k2`
+(sesuai `ADMIN_PATH`).
 
-Saat volume `pgdata` masih kosong, PostgreSQL otomatis menjalankan
-`db/seed.sql` — skema dan data contoh langsung siap.
+**Panduan deploy lengkap** (VPS, PostgreSQL, systemd, Caddy + HTTPS):
+baca **[README-DEPLOY.md](README-DEPLOY.md)**.
 
-Perintah yang sering dipakai:
+---
 
-```bash
-docker compose logs -f backend     # log backend
-docker compose ps                  # status layanan
-docker compose down                # hentikan, data tetap
-docker compose down -v             # hentikan + hapus volume (mulai dari nol)
+## Struktur
+
 ```
-
-### Memuat katalog lengkap dari sumber asli
-
-Seed hanya berisi 4 contoh. Untuk memuat katalog lengkap:
-
-```bash
-docker compose --profile tools run --rm etl
-```
-
-ETL mengambil daftar dari `awesome-android-native-ports`, mem-parse tabel
-markdown, lalu meng-`UPSERT` ke database. Aman dijalankan berulang.
-
-### Crawl otomatis (terjadwal)
-
-```bash
-docker compose --profile cron up -d etl-cron
-docker compose --profile cron logs -f etl-cron
-```
-
-Berjalan **setiap hari 20:15 WIB** (atur lewat `etl/crontab` dan `ETL_TZ`).
-
-Kenapa 20:15:
-
-- Sumber diperbarui tidak terjadwal; commit terakhirnya siang–sore waktu pembuat.
-  20:15 memastikan perubahan hari itu ikut tertangkap tanpa menunggu besok.
-- Tidak berbarengan dengan laporan VPS 08:00.
-- **Biaya nyaris nol**: ETL memakai `ETag`/`If-None-Match`. Kalau sumber belum
-  berubah, server membalas `304` dan tidak ada satu baris pun ditulis.
-
-Perilaku yang perlu diketahui:
-
-| Situasi | Hasil | Exit |
-|---|---|---|
-| Sumber berubah | parse + UPSERT, log `+N baru, ~N diperbarui` | 0 |
-| Sumber tidak berubah | `304 Not Modified`, DB tidak disentuh | 0 |
-| Sumber berubah format / baris < `ETL_MIN_ROWS` | dibatalkan, DB **tidak** disentuh | 2 |
-| Jaringan/DB gagal | error | ≠ 0 |
-
-Pengaman `ETL_MIN_ROWS` (default 100) mencegah sumber yang tiba-tiba rusak
-mengosongkan katalog.
-
-Paksa muat ulang tanpa menunggu perubahan:
-
-```bash
-docker compose --profile tools run --rm etl python etl/etl.py --force
+cmd/server/main.go          entrypoint, graceful shutdown
+internal/
+  config/config.go          konfigurasi env, escape kredensial DSN
+  db/
+    db.go                   pool pgx + health
+    models.go               tipe JSON
+    queries.go              SQL, filter, paginasi, mutasi, analitik
+  api/
+    server.go               router publik, static, CORS
+    admin.go                CRUD admin, upload, statistik
+    auth.go                 sesi cookie, verifikasi password
+static/
+  index.html app.js style.css        frontend publik
+  admin.html admin.js admin.css      panel admin
+db/seed.sql                 skema + referensi (idempoten)
+Caddyfile                   reverse proxy + HTTPS
+gameport.service            unit systemd
 ```
 
 ---
 
-## Menjalankan tanpa Docker
-
-Butuh Go 1.23+ dan PostgreSQL yang sudah jalan.
-
-```bash
-createdb gamedb
-psql -d gamedb -f db/seed.sql
-
-export GAMEDB_HOST=127.0.0.1 GAMEDB_PORT=5432 GAMEDB_NAME=gamedb
-export GAMEDB_USER=postgres GAMEDB_PASSWORD=rahasia
-
-go run ./cmd/server
-```
-
-Untuk ETL tanpa Docker:
-
-```bash
-pip install 'psycopg[binary]'
-GAMEDB_HOST=127.0.0.1 GAMEDB_USER=postgres GAMEDB_PASSWORD=rahasia \
-  python3 etl/etl.py
-```
-
----
-
-## Struktur project
-
-```
-.
-├── cmd/server/main.go          entrypoint, graceful shutdown
-├── internal/
-│   ├── config/config.go        konfigurasi dari environment
-│   ├── db/
-│   │   ├── db.go               pool pgx + health
-│   │   ├── models.go           tipe JSON
-│   │   └── queries.go          SQL, filter, paginasi
-│   └── api/server.go           router, handler, CORS, static
-├── static/                     frontend vanilla
-│   ├── index.html
-│   ├── style.css
-│   └── app.js
-├── db/seed.sql                 skema + data awal (idempoten)
-├── etl/etl.py                  crawler + loader 210 port
-├── Dockerfile                  build multi-stage Go
-├── Dockerfile.etl              image khusus ETL
-└── docker-compose.yml
-```
-
----
-
-## API
-
-Semua respons JSON. Tidak ada autentikasi (katalog publik, read-only).
+## API publik
 
 | Endpoint | Keterangan |
 |---|---|
-| `GET /api/health` | status koneksi DB + statistik pool |
-| `GET /api/statistik` | angka agregat untuk dashboard |
-| `GET /api/kategori` | kategori + jumlah port |
+| `GET /api/health` | status koneksi DB + pool |
+| `GET /api/statistik` | agregat katalog |
+| `GET /api/kategori` | kategori + jumlah |
 | `GET /api/status` | status kematangan + jumlah |
 | `GET /api/platform` | platform + jumlah |
-| `GET /api/engine` | engine + jumlah |
+| `GET /api/genre` | genre + jumlah |
 | `GET /api/ports` | daftar port (filter, sort, paginasi) |
-| `GET /api/ports/{slug}` | detail satu port + 6 terkait |
+| `GET /api/ports/{slug}` | detail + 6 terkait |
+| `GET /api/ports/{slug}/download` | catat unduhan, lalu redirect |
 
-### Parameter `/api/ports`
-
-| Param | Nilai | Default |
-|---|---|---|
-| `q` | pencarian teks (game/deskripsi/author) | — |
-| `kategori` | slug, boleh berkoma | — |
-| `status` | `stable`, `beta`, `experimental`, `alpha` | — |
-| `platform` | `android`, `windows`, `linux`, … | — |
-| `own` | `0` / `1` (butuh data asli) | — |
-| `sort` | `kategori`, `nama`, `nama-desc`, `status` | `kategori` |
-| `limit` | 1–200 | 24 |
-| `offset` | ≥ 0 | 0 |
-
-Contoh:
+Parameter `/api/ports`: `q`, `kategori`, `genre`, `platform`, `own=0|1`,
+`sort` (`kategori` `nama` `nama-desc` `status` `populer` `terbaru` `download`),
+`limit` (1–200), `offset`.
 
 ```bash
-curl 'http://127.0.0.1:8181/api/ports?q=zelda'
-curl 'http://127.0.0.1:8181/api/ports?status=alpha&platform=android'
-curl 'http://127.0.0.1:8181/api/ports/half-life-xash3d-fwgs'
+curl 'http://127.0.0.1:8181/api/ports?q=half-life'
+curl 'http://127.0.0.1:8181/api/ports?genre=shooter&sort=populer'
 ```
+
+---
+
+## API admin
+
+Semua di bawah `ADMIN_PATH` (contoh `/panel-x7k2`). Butuh sesi cookie.
+
+| Endpoint | Keterangan |
+|---|---|
+| `POST {ADMIN_PATH}/login` | `{"password":"..."}` → set cookie |
+| `POST {ADMIN_PATH}/logout` | hapus sesi |
+| `GET {ADMIN_PATH}/api/stat` | statistik + grafik + populer + pencarian |
+| `GET {ADMIN_PATH}/api/list` | daftar semua port (termasuk draf) |
+| `GET {ADMIN_PATH}/api/port/{id}` | detail untuk form edit |
+| `POST {ADMIN_PATH}/api/port` | buat port baru |
+| `PUT {ADMIN_PATH}/api/port/{id}` | ubah port |
+| `DELETE {ADMIN_PATH}/api/port/{id}` | hapus port |
+| `POST {ADMIN_PATH}/api/upload` | multipart `file` → `{"url":"/uploads/..."}` |
+
+Payload port:
+
+```json
+{
+  "game": "Half-Life (Xash3D FWGS)",
+  "version": "1.3.0",
+  "file_size": "790 MB",
+  "genre_slug": "shooter",
+  "description": "Engine GoldSrc kompatibel…",
+  "author": "FWGS",
+  "category_slug": "source-port",
+  "status_slug": "stable",
+  "image_url": "/uploads/xxx.png",
+  "download_url": "https://example.com/hl.apk",
+  "published": true,
+  "needs_own_data": true,
+  "platforms": ["android", "windows"]
+}
+```
+
+Wajib: `game`, `category_slug`, `status_slug`.
 
 ---
 
 ## Database
 
-Tabel referensi (`categories`, `statuses`, `platforms`, `engines`,
-`features`) dan tabel konten (`ports`) dengan relasi banyak-ke-banyak
-(`port_platforms`, `port_engines`, `port_features`).
+Tabel: `ports` (konten), referensi (`categories`, `statuses`, `platforms`,
+`genres`), relasi (`port_platforms`), analitik (`events`, `admin_sessions`).
 
-Dua view:
-- `v_port_detail` — meratakan join menjadi array; dipakai API
-- `v_statistik` — agregat untuk dashboard
-
-Atribut multi-nilai disimpan di tabel join, bukan string berkoma, supaya
-filter tidak salah cocok.
+Dua view: `v_port_detail` (meratakan join jadi array) dan `v_statistik`
+(agregat). `db/seed.sql` idempoten — aman dijalankan berulang.
 
 ---
 
-## Memuat data dari sumber
+## Keamanan
 
-Sumber: [awesome-android-native-ports](https://github.com/abduznik/awesome-android-native-ports)
-(daftar terkurasi di git, berbentuk tabel markdown — stabil dan bisa di-diff,
-jauh lebih andal daripada scraping HTML).
-
-```bash
-python3 etl/etl.py --dry-run    # parse saja, tidak menyimpan
-python3 etl/etl.py              # crawl + muat
-python3 etl/etl.py --file X.md  # pakai file lokal
-```
-
-ETL menurunkan atribut dari deskripsi dengan aturan berpola: platform,
-engine, status kematangan, kebutuhan data asli, dan fitur.
+- Panel admin di path acak, tidak ditautkan dari halaman publik
+- Endpoint admin mengembalikan **404** (bukan 401) untuk pengunjung tanpa sesi
+- Password admin di-hash SHA-256 dan dibandingkan konstan-waktu
+- Jeda 600 ms pada login gagal (memperlambat brute force)
+- Upload diverifikasi magic bytes, bukan hanya ekstensi
+- Cookie `HttpOnly`, `SameSite=Lax`, `Secure` otomatis saat HTTPS
+- CORS hanya untuk `/api/` publik; halaman admin `no-store` + `noindex`
 
 ---
 
 ## Pengembangan
 
 ```bash
-go vet ./...          # analisis statis
-go build ./...        # kompilasi
-go run ./cmd/server   # jalankan lokal
+go vet ./...
+go build ./...
+go run ./cmd/server
 ```
 
-Konfigurasi lewat environment. Lihat `.env.example` untuk daftar lengkap.
-
-Untuk menambah endpoint: tambah method di `internal/db/queries.go`, daftarkan
-rute di `internal/api/server.go`.
+Butuh Go 1.23+. Konfigurasi lewat environment, lihat `.env.example`.
 
 ---
 
 ## Lisensi
 
-Kode: MIT.
-Data: milik masing-masing proyek port; lihat repo sumber.
+Kode: MIT. Data port milik masing-masing pembuat aslinya.

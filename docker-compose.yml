@@ -1,16 +1,11 @@
 # =============================================================================
-# GamePort — docker compose
+# GamePort
 #
-#   cp .env.example .env      # lalu isi password
+#   cp .env.example .env      # isi GAMEDB_PASSWORD dan ADMIN_PASSWORD
 #   docker compose up -d --build
 #   open http://127.0.0.1:8181
 #
-# Layanan:
-#   db        PostgreSQL 17, seed otomatis dari db/seed.sql saat volume baru
-#   backend   Go server, menyajikan API + frontend statis
-#
-# Volume `pgdata` menyimpan data. Hapus untuk mulai dari nol:
-#   docker compose down -v
+# Layanan: db (PostgreSQL) + backend (Go, API + frontend + admin)
 # =============================================================================
 
 services:
@@ -34,7 +29,6 @@ services:
       retries: 12
       start_period: 10s
     networks: [gameport]
-    # Tanpa port publish: hanya backend yang perlu akses.
 
   backend:
     build:
@@ -51,64 +45,24 @@ services:
       GAMEDB_NAME: ${GAMEDB_NAME:-gamedb}
       GAMEDB_USER: ${GAMEDB_USER:-gameport}
       GAMEDB_PASSWORD: ${GAMEDB_PASSWORD:?set GAMEDB_PASSWORD di .env}
+      APP_HOST: 0.0.0.0
       APP_PORT: "8181"
       CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD di .env}
+      ADMIN_PATH: ${ADMIN_PATH:-/panel-x7k2}
     ports:
+      # Bind ke localhost; pasang Caddy/nginx untuk publik
       - "${APP_BIND:-127.0.0.1}:${APP_PORT:-8181}:8181"
-    networks: [gameport]
-
-  # Muat data dari sumber (butuh internet). Bukan daemon:
-  #   docker compose --profile tools run --rm etl
-  etl:
-    build:
-      context: .
-      dockerfile: Dockerfile.etl
-    profiles: ["tools"]
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      GAMEDB_HOST: db
-      GAMEDB_PORT: "5432"
-      GAMEDB_NAME: ${GAMEDB_NAME:-gamedb}
-      GAMEDB_USER: ${GAMEDB_USER:-gameport}
-      GAMEDB_PASSWORD: ${GAMEDB_PASSWORD:?set GAMEDB_PASSWORD di .env}
     volumes:
-      - ./etl:/app/etl:ro
-    command: ["python", "etl/etl.py"]
+      # Gambar unggahan tetap ada walau container di-recreate
+      - ./uploads:/app/uploads
     networks: [gameport]
-
-  # ---------------------------------------------------------------
-  # Crawl terjadwal. Berjalan sebagai daemon crond di dalam image ETL.
-  #   docker compose --profile cron up -d etl-cron
-  #   docker compose --profile cron logs -f etl-cron
-  #
-  # Hanya memuat ulang bila sumber berubah (ETag). Tanpa perubahan,
-  # run harian tidak menyentuh database sama sekali.
-  # ---------------------------------------------------------------
-  etl-cron:
-    build:
-      context: .
-      dockerfile: Dockerfile.etl
-    container_name: gameport-etl-cron
-    profiles: ["cron"]
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      GAMEDB_HOST: db
-      GAMEDB_PORT: "5432"
-      GAMEDB_NAME: ${GAMEDB_NAME:-gamedb}
-      GAMEDB_USER: ${GAMEDB_USER:-gameport}
-      GAMEDB_PASSWORD: ${GAMEDB_PASSWORD:?set GAMEDB_PASSWORD di .env}
-      TZ: ${ETL_TZ:-Asia/Jakarta}
-      ETL_MIN_ROWS: ${ETL_MIN_ROWS:-100}
-    volumes:
-      - ./etl:/app/etl
-    # crond busybox dalam mode foreground (-f), log ke stdout (-l 8)
-    command: ["crond", "-f", "-l", "8", "-c", "/app/etl"]
-    networks: [gameport]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8181/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
 volumes:
   pgdata:

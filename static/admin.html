@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/admin.css">
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="loginView" class="login-wrap" hidden>
+  <form id="loginForm" class="login">
+    <div class="login-brand"><span class="dot"></span> Admin Panel</div>
+    <p class="login-sub">Masuk untuk mengelola konten.</p>
+    <input id="pw" type="password" placeholder="Password" autocomplete="current-password" required>
+    <button type="submit" id="loginBtn">Masuk</button>
+    <div id="loginErr" class="err" hidden></div>
+  </form>
+</div>
+
+<!-- ============ DASHBOARD ============ -->
+<div id="appView" hidden>
+  <aside class="side">
+    <div class="side-brand"><span class="dot"></span> GamePort</div>
+    <nav>
+      <button class="nav-item active" data-tab="stat">Statistik</button>
+      <button class="nav-item" data-tab="list">Daftar Port</button>
+      <button class="nav-item" data-tab="form">Tambah Port</button>
+    </nav>
+    <div class="side-foot">
+      <a href="/" target="_blank" rel="noopener">Lihat situs ↗</a>
+      <button id="logoutBtn" class="logout">Keluar</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- ---------- Statistik ---------- -->
+    <section id="tab-stat" class="tab">
+      <div class="page-head">
+        <h1>Statistik</h1>
+        <button class="btn ghost" id="refreshStat">Muat ulang</button>
+      </div>
+      <div class="cards" id="statCards"></div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Aktivitas 14 hari</h2></div>
+        <div id="chart" class="chart"></div>
+      </div>
+
+      <div class="two-col">
+        <div class="panel">
+          <div class="panel-head"><h2>Paling dilihat</h2></div>
+          <div id="populer" class="list-simple"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>Pencarian teratas (30 hari)</h2></div>
+          <div id="pencarian" class="list-simple"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- Daftar ---------- -->
+    <section id="tab-list" class="tab" hidden>
+      <div class="page-head">
+        <h1>Daftar Port</h1>
+        <div class="head-actions">
+          <input id="listQ" type="search" placeholder="Cari…" class="inp sm">
+          <button class="btn ghost" id="refreshList">Muat ulang</button>
+        </div>
+      </div>
+      <div id="listTable" class="table-wrap"></div>
+      <div class="pager" id="listPager" hidden>
+        <button id="listPrev">←</button>
+        <span id="listInfo"></span>
+        <button id="listNext">→</button>
+      </div>
+    </section>
+
+    <!-- ---------- Form ---------- -->
+    <section id="tab-form" class="tab" hidden>
+      <div class="page-head">
+        <h1 id="formTitle">Tambah Port</h1>
+        <button class="btn ghost" id="resetForm">Kosongkan</button>
+      </div>
+
+      <form id="portForm" class="form">
+        <input type="hidden" id="f_id">
+
+        <div class="grid2">
+          <label class="field">
+            <span>Nama Game *</span>
+            <input id="f_game" required placeholder="Contoh: Half-Life">
+          </label>
+          <label class="field">
+            <span>Versi</span>
+            <input id="f_version" placeholder="1.0.2">
+          </label>
+          <label class="field">
+            <span>Ukuran Berkas</span>
+            <input id="f_size" placeholder="450 MB">
+          </label>
+          <label class="field">
+            <span>Genre</span>
+            <select id="f_genre"><option value="">— pilih genre —</option></select>
+          </label>
+          <label class="field">
+            <span>Kategori *</span>
+            <select id="f_category" required><option value="">— pilih kategori —</option></select>
+          </label>
+          <label class="field">
+            <span>Status *</span>
+            <select id="f_status" required><option value="">— pilih status —</option></select>
+          </label>
+          <label class="field">
+            <span>Author / Porter</span>
+            <input id="f_author" placeholder="FWGS">
+          </label>
+          <label class="field">
+            <span>Link Download</span>
+            <input id="f_download" placeholder="https://…">
+          </label>
+        </div>
+
+        <label class="field">
+          <span>Deskripsi</span>
+          <textarea id="f_desc" rows="4" placeholder="Penjelasan singkat tentang port ini…"></textarea>
+        </label>
+
+        <div class="field">
+          <span>Platform</span>
+          <div id="platformBox" class="checks"></div>
+        </div>
+
+        <div class="field">
+          <span>Gambar Sampul</span>
+          <div class="upload-row">
+            <input id="f_image" placeholder="/uploads/… atau URL gambar" class="grow">
+            <input type="file" id="fileInput" accept="image/*" hidden>
+            <button type="button" class="btn ghost" id="pickFile">Pilih Berkas</button>
+          </div>
+          <div id="preview" class="preview" hidden><img id="previewImg" alt="pratinjau"></div>
+          <div id="uploadMsg" class="hint"></div>
+        </div>
+
+        <div class="checks-row">
+          <label class="check"><input type="checkbox" id="f_published" checked> Terbitkan</label>
+          <label class="check"><input type="checkbox" id="f_owndata"> Butuh data asli</label>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn primary" id="saveBtn">Simpan</button>
+          <button type="button" class="btn ghost" id="cancelEdit">Batal</button>
+          <span id="formMsg" class="hint"></span>
+        </div>
+      </form>
+    </section>
+  </main>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+<script src="/static/admin.js"></script>
+</body>
+</html>

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GamePort — Port Native Android dari Game PC &amp; Konsol</title>
 <meta name="description" content="Katalog port native Android dari game PC dan konsol: source port, dekompilasi, dan rekompilasi statis.">
+<meta name="robots" content="index, follow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -29,13 +30,13 @@
     <h1>Game PC &amp; konsol, <em>jalan native</em> di Android.</h1>
     <p class="lede">
       Katalog port native — source port, dekompilasi, dan rekompilasi statis yang menjalankan
-      kode game langsung di perangkat, bukan emulasi. Seluruh data dibaca dari PostgreSQL.
+      kode game langsung di perangkat, bukan emulasi.
     </p>
     <div class="stats" id="stats">
       <div class="stat"><div class="n">—</div><div class="l">Total Port</div></div>
-      <div class="stat"><div class="n">—</div><div class="l">Author</div></div>
+      <div class="stat"><div class="n">—</div><div class="l">Genre</div></div>
       <div class="stat"><div class="n">—</div><div class="l">Stabil</div></div>
-      <div class="stat"><div class="n">—</div><div class="l">Butuh Data Asli</div></div>
+      <div class="stat"><div class="n">—</div><div class="l">Diunduh</div></div>
     </div>
   </div>
 </section>
@@ -48,12 +49,13 @@
       </svg>
       <input id="q" type="search" placeholder="Cari game, deskripsi, atau author…" autocomplete="off">
     </div>
-    <select id="statusSel"><option value="">Semua status</option></select>
+    <select id="genreSel"><option value="">Semua genre</option></select>
     <select id="platformSel"><option value="">Semua platform</option></select>
     <select id="sortSel">
-      <option value="kategori">Urut: Kategori</option>
+      <option value="terbaru">Urut: Terbaru</option>
+      <option value="populer">Urut: Populer</option>
       <option value="nama">Urut: Nama A–Z</option>
-      <option value="nama-desc">Urut: Nama Z–A</option>
+      <option value="download">Urut: Paling diunduh</option>
       <option value="status">Urut: Kematangan</option>
     </select>
     <div class="chips" id="catChips"></div>
@@ -77,11 +79,7 @@
 
 <footer id="tentang">
   <div class="wrap foot-row">
-    <div>
-      Data dari
-      <a href="https://github.com/abduznik/awesome-android-native-ports" target="_blank" rel="noopener">awesome-android-native-ports</a>
-      · dimuat ke PostgreSQL lewat ETL.
-    </div>
+    <div>Katalog port native Android. Semua port milik pembuat aslinya.</div>
     <div class="mono" id="footInfo">—</div>
   </div>
 </footer>

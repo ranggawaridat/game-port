@@ -3,15 +3,14 @@ FROM golang:1.23-alpine AS build
 
 WORKDIR /src
 
-# Cache dependency dulu supaya rebuild cepat saat kode berubah
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY cmd ./cmd
 COPY internal ./internal
 
-# Static binary, tanpa CGO
 RUN CGO_ENABLED=0 GOOS=linux go build \
+    -trimpath \
     -ldflags="-s -w" \
     -o /out/server ./cmd/server
 
@@ -23,17 +22,21 @@ RUN apk add --no-cache ca-certificates tzdata \
 
 WORKDIR /app
 
-COPY --from=build /out/server /app/server
+COPY --from=build /out/server /app/gameport
 COPY static /app/static
+
+RUN mkdir -p /app/uploads && chown -R app:app /app
 
 USER app
 
-ENV APP_PORT=8181 \
-    STATIC_DIR=/app/static
+ENV APP_HOST=0.0.0.0 \
+    APP_PORT=8181 \
+    STATIC_DIR=/app/static \
+    UPLOAD_DIR=/app/uploads
 
 EXPOSE 8181
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD wget -qO- http://127.0.0.1:8181/api/health >/dev/null 2>&1 || exit 1
 
-ENTRYPOINT ["/app/server"]
+ENTRYPOINT ["/app/gameport"]

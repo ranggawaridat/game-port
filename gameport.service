@@ -1,0 +1,50 @@
+# =============================================================================
+# systemd unit — GamePort
+#
+# Pasang:
+#   sudo cp gameport.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now gameport
+#
+# Lihat log:
+#   sudo journalctl -u gameport -f
+# =============================================================================
+
+[Unit]
+Description=GamePort — katalog port native Android
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=gameport
+Group=gameport
+WorkingDirectory=/srv/gameport
+
+# Memuat .env sebagai EnvironmentFile (format KEY=VALUE tanpa 'export')
+EnvironmentFile=/srv/gameport/.env
+
+ExecStart=/srv/gameport/gameport
+Restart=on-failure
+RestartSec=3
+
+# Pengerasan
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/gameport/uploads
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=false
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=gameport
+
+[Install]
+WantedBy=multi-user.target

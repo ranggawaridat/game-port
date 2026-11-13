@@ -2,6 +2,8 @@
 package config
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"net/url"
 	"os"
@@ -10,17 +12,33 @@ import (
 	"time"
 )
 
-// Config adalah seluruh konfigurasi runtime aplikasi.
+// Config adalah seluruh konfigurasi runtime.
 type Config struct {
+	Host         string
 	Port         string
 	DatabaseURL  string
 	CORSOrigins  []string
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
 	StaticDir    string
+	UploadDir    string
+
+	// Admin
+	AdminPath         string // path rahasia, mis. /panel-x7k2
+	AdminPasswordHash string // sha256 hex dari password
+	AdminSessionKey   string
+
+	// URL publik (dipakai untuk membangun link gambar absolut bila perlu)
+	PublicBaseURL string
 }
 
-// Load membaca environment. Mengembalikan error bila kredensial wajib kosong.
+// HashPassword menghasilkan sha256 hex. Dipakai juga oleh tool CLI.
+func HashPassword(p string) string {
+	sum := sha256.Sum256([]byte(p))
+	return hex.EncodeToString(sum[:])
+}
+
+// Load membaca environment dan memvalidasi yang wajib.
 func Load() (*Config, error) {
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
@@ -32,11 +50,9 @@ func Load() (*Config, error) {
 		if user == "" {
 			return nil, fmt.Errorf("GAMEDB_USER kosong: set di environment atau pakai DATABASE_URL")
 		}
-		// User dan password WAJIB di-escape: password sering mengandung
-		// karakter seperti ':' dan '/' yang merusak URL DSN.
+		// Kredensial WAJIB di-escape: password sering mengandung ':' dan '/'.
 		dsn = fmt.Sprintf("postgres://%s@%s:%s/%s?sslmode=disable",
-			url.UserPassword(user, pass).String(),
-			host, port, name)
+			url.UserPassword(user, pass).String(), host, port, name)
 	}
 
 	origins := []string{"*"}
@@ -49,13 +65,36 @@ func Load() (*Config, error) {
 		}
 	}
 
+	adminPath := envOr("ADMIN_PATH", "/panel-x7k2")
+	if !strings.HasPrefix(adminPath, "/") {
+		adminPath = "/" + adminPath
+	}
+	adminPath = strings.TrimRight(adminPath, "/")
+
+	// Password admin: terima hash langsung atau plaintext (di-hash di sini).
+	pwHash := strings.TrimSpace(os.Getenv("ADMIN_PASSWORD_HASH"))
+	if pwHash == "" {
+		if pw := os.Getenv("ADMIN_PASSWORD"); pw != "" {
+			pwHash = HashPassword(pw)
+		}
+	}
+	if pwHash == "" {
+		return nil, fmt.Errorf("ADMIN_PASSWORD atau ADMIN_PASSWORD_HASH wajib diisi")
+	}
+
 	return &Config{
-		Port:         envOr("APP_PORT", "8181"),
-		DatabaseURL:  dsn,
-		CORSOrigins:  origins,
-		ReadTimeout:  durOr("HTTP_READ_TIMEOUT", 15*time.Second),
-		WriteTimeout: durOr("HTTP_WRITE_TIMEOUT", 30*time.Second),
-		StaticDir:    envOr("STATIC_DIR", "static"),
+		Host:              envOr("APP_HOST", "0.0.0.0"),
+		Port:              envOr("APP_PORT", "8181"),
+		DatabaseURL:       dsn,
+		CORSOrigins:       origins,
+		ReadTimeout:       durOr("HTTP_READ_TIMEOUT", 20*time.Second),
+		WriteTimeout:      durOr("HTTP_WRITE_TIMEOUT", 60*time.Second),
+		StaticDir:         envOr("STATIC_DIR", "static"),
+		UploadDir:         envOr("UPLOAD_DIR", "uploads"),
+		AdminPath:         adminPath,
+		AdminPasswordHash: pwHash,
+		AdminSessionKey:   envOr("ADMIN_SESSION_KEY", ""),
+		PublicBaseURL:     strings.TrimRight(os.Getenv("PUBLIC_BASE_URL"), "/"),
 	}, nil
 }
 
