@@ -14,6 +14,7 @@ type Port struct {
 	Author        string    `json:"author"`
 	ImageURL      *string   `json:"image_url"`
 	DownloadURL   *string   `json:"download_url"`
+	IsoURL        *string   `json:"iso_url"`
 	ViewCount     int64     `json:"view_count"`
 	DownloadCount int64     `json:"download_count"`
 	Published     bool      `json:"published"`
@@ -56,6 +57,7 @@ type PortInput struct {
 	StatusSlug   string   `json:"status_slug"`
 	ImageURL     *string  `json:"image_url"`
 	DownloadURL  *string  `json:"download_url"`
+	IsoURL       *string  `json:"iso_url"`
 	Published    bool     `json:"published"`
 	NeedsOwnData bool     `json:"needs_own_data"`
 	Platforms    []string `json:"platforms"`
