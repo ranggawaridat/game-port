@@ -33,7 +33,6 @@ type Config struct {
 
 	// SafeLink — gerbang iklan sebelum unduhan
 	SafeLinkEnabled bool
-	SafeLinkSecret  string
 	SafeLinkWait    int // detik tunggu di halaman gerbang
 	SafeLinkTTL     int // umur token, detik
 }
@@ -103,7 +102,6 @@ func Load() (*Config, error) {
 		PublicBaseURL:     strings.TrimRight(os.Getenv("PUBLIC_BASE_URL"), "/"),
 
 		SafeLinkEnabled: envOr("SAFELINK_ENABLED", "false") == "true",
-		SafeLinkSecret:  envOr("SAFELINK_SECRET", ""),
 		SafeLinkWait:    intOr("SAFELINK_WAIT", 10),
 		SafeLinkTTL:     intOr("SAFELINK_TTL", 300),
 	}, nil

@@ -51,6 +51,10 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/ports/{slug}/download", s.handleDownload)
 	mux.HandleFunc("GET /api/ports/{slug}/iso", s.handleIsoDownload)
 
+	// Safelink: gerbang iklan sebelum unduhan
+	mux.HandleFunc("GET /dl/{slug}/{kind}", s.handleSafeLinkPage)
+	mux.HandleFunc("POST /dl/{slug}/{kind}/mint", s.handleSafeLinkMint)
+
 	// ---------- Admin (path rahasia, tidak ditautkan dari publik) ----------
 	ap := s.cfg.AdminPath
 	mux.HandleFunc("GET "+ap, s.handleAdminPage)
@@ -311,6 +315,9 @@ func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, http.StatusNotFound, "unduhan tidak tersedia")
 		return
 	}
+	if !s.cekToken(w, r, p, "port") {
+		return
+	}
 	id := p.ID
 	s.store.TambahDownload(ctx, id)
 	_ = s.store.CatatEvent(ctx, "download", &id, nil)
@@ -327,6 +334,9 @@ func (s *Server) handleIsoDownload(w http.ResponseWriter, r *http.Request) {
 	p, err := s.store.GetPort(ctx, slug, false)
 	if err != nil || p.IsoURL == nil || *p.IsoURL == "" {
 		s.writeErr(w, http.StatusNotFound, "link ISO tidak tersedia")
+		return
+	}
+	if !s.cekToken(w, r, p, "iso") {
 		return
 	}
 	id := p.ID

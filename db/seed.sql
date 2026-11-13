@@ -93,6 +93,16 @@ CREATE TABLE IF NOT EXISTS download_tokens (
 );
 CREATE INDEX IF NOT EXISTS idx_dltoken_expiry ON download_tokens(expires_at);
 
+-- Pengaturan sederhana key/value, dipakai untuk script iklan safelink
+-- yang bisa diubah dari panel admin tanpa deploy.
+CREATE TABLE IF NOT EXISTS settings (
+    key        TEXT PRIMARY KEY,
+    value      TEXT NOT NULL DEFAULT '',
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+INSERT INTO settings (key, value) VALUES ('safelink_ad_html', '')
+ON CONFLICT (key) DO NOTHING;
+
 CREATE INDEX IF NOT EXISTS idx_ports_category ON ports(category_slug);
 CREATE INDEX IF NOT EXISTS idx_ports_status   ON ports(status_slug);
 CREATE INDEX IF NOT EXISTS idx_ports_genre    ON ports(genre_slug);

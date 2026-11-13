@@ -27,24 +27,54 @@ func (s *Store) BuatNonceHalaman(ctx context.Context, nonce string, portID int64
 	return nil
 }
 
+// ErrBelumWaktu dikembalikan bila halaman gerbang belum melewati masa tunggu.
+var ErrBelumWaktu = errors.New("belum melewati masa tunggu")
+
 // PakaiNonceHalaman menandai nonce terpakai dan mengembalikan tujuannya.
-// Nonce hanya sah bila belum dipakai dan usianya belum melewati maxAge.
-func (s *Store) PakaiNonceHalaman(ctx context.Context, nonce string, maxAge time.Duration) (int64, string, error) {
+//
+// Nonce hanya sah bila:
+//   - belum pernah dipakai,
+//   - umurnya sudah melewati minAge (masa tunggu halaman gerbang), dan
+//   - belum melewati maxAge.
+//
+// Masa tunggu diperiksa di server, bukan dari timer JavaScript, sehingga
+// mempercepat timer di browser tidak berpengaruh.
+func (s *Store) PakaiNonceHalaman(ctx context.Context, nonce string, minAge, maxAge time.Duration) (int64, string, error) {
 	var portID int64
 	var kind string
 	err := s.Pool.QueryRow(ctx, `
 		UPDATE safelink_pages SET used_at = now()
 		WHERE nonce = $1
 		  AND used_at IS NULL
-		  AND created_at > now() - make_interval(secs => $2)
-		RETURNING port_id, kind`, nonce, maxAge.Seconds()).Scan(&portID, &kind)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return 0, "", ErrNotFound
+		  AND created_at <= now() - make_interval(secs => $2)
+		  AND created_at >  now() - make_interval(secs => $3)
+		RETURNING port_id, kind`,
+		nonce, minAge.Seconds(), maxAge.Seconds()).Scan(&portID, &kind)
+
+	if err == nil {
+		return portID, kind, nil
 	}
-	if err != nil {
+	if !errors.Is(err, pgx.ErrNoRows) {
 		return 0, "", fmt.Errorf("pakai nonce: %w", err)
 	}
-	return portID, kind, nil
+
+	// Tidak cocok. Bedakan "belum waktunya" dari "nonce tidak sah" supaya
+	// halaman bisa memberi pesan yang benar.
+	var dibuat time.Time
+	var dipakai *time.Time
+	e := s.Pool.QueryRow(ctx,
+		`SELECT created_at, used_at FROM safelink_pages WHERE nonce = $1`, nonce).
+		Scan(&dibuat, &dipakai)
+	if errors.Is(e, pgx.ErrNoRows) || dipakai != nil {
+		return 0, "", ErrNotFound
+	}
+	if e != nil {
+		return 0, "", fmt.Errorf("cek nonce: %w", e)
+	}
+	if time.Since(dibuat) < minAge {
+		return 0, "", ErrBelumWaktu
+	}
+	return 0, "", ErrNotFound
 }
 
 // TerbitkanTokenDownload menyimpan hash token sekali pakai.
