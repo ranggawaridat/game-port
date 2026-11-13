@@ -30,6 +30,12 @@ type Config struct {
 
 	// URL publik (dipakai untuk membangun link gambar absolut bila perlu)
 	PublicBaseURL string
+
+	// SafeLink — gerbang iklan sebelum unduhan
+	SafeLinkEnabled bool
+	SafeLinkSecret  string
+	SafeLinkWait    int // detik tunggu di halaman gerbang
+	SafeLinkTTL     int // umur token, detik
 }
 
 // HashPassword menghasilkan sha256 hex. Dipakai juga oleh tool CLI.
@@ -95,6 +101,11 @@ func Load() (*Config, error) {
 		AdminPasswordHash: pwHash,
 		AdminSessionKey:   envOr("ADMIN_SESSION_KEY", ""),
 		PublicBaseURL:     strings.TrimRight(os.Getenv("PUBLIC_BASE_URL"), "/"),
+
+		SafeLinkEnabled: envOr("SAFELINK_ENABLED", "false") == "true",
+		SafeLinkSecret:  envOr("SAFELINK_SECRET", ""),
+		SafeLinkWait:    intOr("SAFELINK_WAIT", 10),
+		SafeLinkTTL:     intOr("SAFELINK_TTL", 300),
 	}, nil
 }
 
@@ -109,6 +120,16 @@ func durOr(key string, def time.Duration) time.Duration {
 	if v := os.Getenv(key); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			return time.Duration(n) * time.Second
+		}
+	}
+	return def
+}
+
+// intOr membaca bilangan bulat positif dari environment, atau memakai default.
+func intOr(key string, def int) int {
+	if v := strings.TrimSpace(os.Getenv(key)); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			return n
 		}
 	}
 	return def

@@ -66,6 +66,33 @@ ALTER TABLE ports ADD COLUMN IF NOT EXISTS iso_url TEXT;
 ALTER TABLE ports ADD COLUMN IF NOT EXISTS source_url    TEXT;
 ALTER TABLE ports ADD COLUMN IF NOT EXISTS install_notes TEXT;
 
+-- Token sekali pakai untuk safelink: unduhan hanya boleh lewat gerbang iklan.
+
+-- Nonce yang diterbitkan saat halaman gerbang dibuka. Mint token wajib
+-- menyertakan nonce ini, sehingga pemanggil harus benar-benar membuka
+-- halaman (yang memuat iklan) sebelum bisa menebus unduhan.
+CREATE TABLE IF NOT EXISTS safelink_pages (
+    nonce      TEXT PRIMARY KEY,
+    port_id    BIGINT NOT NULL REFERENCES ports(id) ON DELETE CASCADE,
+    kind       TEXT NOT NULL CHECK (kind IN ('port','iso')),
+    ip_hash    TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    used_at    TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_slpage_created ON safelink_pages(created_at);
+
+CREATE TABLE IF NOT EXISTS download_tokens (
+    id         BIGSERIAL PRIMARY KEY,
+    token_hash TEXT NOT NULL UNIQUE,
+    port_id    BIGINT NOT NULL REFERENCES ports(id) ON DELETE CASCADE,
+    kind       TEXT NOT NULL CHECK (kind IN ('port','iso')),
+    ip_hash    TEXT,
+    issued_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at TIMESTAMPTZ NOT NULL,
+    used_at    TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_dltoken_expiry ON download_tokens(expires_at);
+
 CREATE INDEX IF NOT EXISTS idx_ports_category ON ports(category_slug);
 CREATE INDEX IF NOT EXISTS idx_ports_status   ON ports(status_slug);
 CREATE INDEX IF NOT EXISTS idx_ports_genre    ON ports(genre_slug);
