@@ -44,6 +44,37 @@ baca **[README-DEPLOY.md](README-DEPLOY.md)**.
 
 ---
 
+## Dua cara deploy
+
+| | Cara A: systemd di host | Cara B: di dalam container |
+|---|---|---|
+| Aplikasi jalan di | host (`/srv/gameport`) | container Hermes |
+| Database | PostgreSQL host | PostgreSQL container (unix socket) |
+| Caddy meneruskan ke | `127.0.0.1:8181` | `172.18.0.3:8181` |
+| Cocok untuk | VPS khusus GamePort | Hermes + GamePort satu VPS |
+
+**Cara B** tidak butuh user sistem, tidak butuh `systemctl`, dan database-nya
+hanya lewat UNIX socket sehingga tidak ada port DB yang terbuka.
+
+```bash
+# di host
+docker exec -u hermes alpha-hermes /opt/data/gameport/manager.sh start
+
+# Caddyfile untuk cara B
+sudo cp Caddyfile.ip /etc/caddy/Caddyfile
+sudo systemctl reload caddy
+```
+
+`deploy/manager.sh` mengurus PostgreSQL + GamePort sekaligus
+(`start` / `stop` / `restart` / `status` / `logs`).
+
+> **Penting saat pakai IP mentah:** tulis site address Caddy sebagai `:80`,
+> **bukan** `IP_PUBLIK { ... }`. Kalau IP ditulis sebagai site address, Caddy
+> memaksa HTTPS dan membalas **308 redirect** ke port 443 — yang gagal bila
+> 443 tertutup atau sertifikat tidak ada. Lihat catatan di `Caddyfile.ip`.
+
+---
+
 ## Struktur
 
 ```

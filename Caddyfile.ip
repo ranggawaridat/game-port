@@ -1,0 +1,71 @@
+# =============================================================================
+# Caddyfile — GamePort tanpa domain (akses lewat IP publik)
+#
+# Arsitektur:
+#   Internet → Caddy (host :80) → 172.18.0.3:8181 (container) → GamePort
+#
+# ---------------------------------------------------------------------------
+# PENTING — JANGAN tulis IP sebagai site address:
+#
+#     SALAH  149.41.192.124 {  ... }   ← Caddy memaksa HTTPS, balas 308
+#                                       redirect ke :443, lalu gagal karena
+#                                       443 tertutup / tanpa sertifikat
+#     BENAR  :80 {  ... }              ← HTTP murni di port 80, tanpa redirect
+#
+# Caddy hanya membuat HTTPS otomatis bila site address berupa NAMA DOMAIN.
+# Untuk IP mentah, Let's Encrypt tidak menerbitkan sertifikat.
+# ---------------------------------------------------------------------------
+#
+# Pasang di host:
+#   sudo cp Caddyfile.ip /etc/caddy/Caddyfile
+#   sudo caddy validate --config /etc/caddy/Caddyfile
+#   sudo systemctl reload caddy
+#   curl -sI http://127.0.0.1/          # harus 200, BUKAN 308
+#
+# Akses: http://IP_PUBLIK
+# =============================================================================
+
+:80 {
+    encode zstd gzip
+
+    # Batasi ukuran unggahan gambar (5 MB + margin)
+    request_body {
+        max_size 8MB
+    }
+
+    # Header keamanan
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options SAMEORIGIN
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+    }
+
+    # Panel admin jangan diindeks mesin pencari
+    @admin path /admin*
+    header @admin X-Robots-Tag "noindex, nofollow, noarchive"
+
+    # Teruskan ke GamePort di dalam container.
+    # Bila IP container berubah setelah recreate, cari yang baru:
+    #   docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' alpha-hermes
+    reverse_proxy 172.18.0.3:8181 {
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Real-IP {remote_host}
+        # timeout supaya upload besar tidak terputus
+        transport http {
+            read_timeout 60s
+            write_timeout 60s
+        }
+    }
+
+    # Cache aset statis
+    @statis path /static/* /uploads/*
+    header @statis Cache-Control "public, max-age=604800"
+
+    log {
+        output file /var/log/caddy/gameport.log {
+            roll_size 10MB
+            roll_keep 3
+        }
+    }
+}
