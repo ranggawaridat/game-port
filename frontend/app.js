@@ -5,6 +5,22 @@ const state = { q:'', kategori:'', status:'', platform:'', genre:'', sort:'terba
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
+/* ---------- Konfigurasi origin ----------
+ * Frontend dipisah dari backend:
+ *   publik  : https://gameport.web.id          (Vercel, statis)
+ *   backend : https://api.gameport.web.id/v1   (VPS, Go)
+ *
+ * Bila halaman ini dilayani oleh backend sendiri (dev / masa monolitik),
+ * base dibiarkan kosong sehingga semua URL tetap relative.
+ */
+const SAMA_ORIGIN = location.hostname !== 'gameport.web.id';
+const API_ORIGIN  = SAMA_ORIGIN ? '' : 'https://api.gameport.web.id';
+const API         = API_ORIGIN + '/v1';
+
+/* Berkas dari backend (gambar sampul, dsb) ditulis relative di database.
+   Dari origin berbeda, harus diawali origin API. */
+const asetAPI = (u) => (u && u.startsWith('/') ? API_ORIGIN + u : u);
+
 const STATUS_STYLE = {
   stable:       { bg:'rgba(34,197,94,.9)',  fg:'#04140a' },
   beta:         { bg:'rgba(245,158,11,.9)', fg:'#1a1003' },
@@ -38,7 +54,7 @@ function setBadge(kind, text, title) {
 
 async function checkHealth() {
   try {
-    const h = await fetchJson('/api/health', 6000);
+    const h = await fetchJson(API + '/health', 6000);
     setBadge('online', 'Online', `${h.user}@${h.database}`);
     $('#footInfo').textContent = 'GamePort';
   } catch (e) {
@@ -49,8 +65,8 @@ async function checkHealth() {
 
 async function loadStats() {
   try {
-    const s = await fetchJson('/api/statistik');
-    const genreList = await fetchJson('/api/genre');
+    const s = await fetchJson(API + '/statistik');
+    const genreList = await fetchJson(API + '/genre');
     const genreAktif = genreList.filter(g => g.jumlah > 0).length;
     const cells = [
       [s.terbit, 'Total Port'],
@@ -68,7 +84,7 @@ async function loadFilters() {
   let cats, plats, gens;
   try {
     [cats, plats, gens] = await Promise.all([
-      fetchJson('/api/kategori'), fetchJson('/api/platform'), fetchJson('/api/genre')
+      fetchJson(API + '/kategori'), fetchJson(API + '/platform'), fetchJson(API + '/genre')
     ]);
   } catch (_) { return; }
 
@@ -91,7 +107,7 @@ function badgeHtml(slug, name) {
 
 function thumbHtml(p) {
   if (p.image_url) {
-    return `<div class="thumb"><img src="${esc(p.image_url)}" alt="${esc(p.game)}" loading="lazy"
+    return `<div class="thumb"><img src="${esc(asetAPI(p.image_url))}" alt="${esc(p.game)}" loading="lazy"
               onerror="this.parentElement.innerHTML='<div class=\\'ph\\'>${esc((p.game||'?')[0])}</div>'">
               ${badgeHtml(p.status_slug, p.status_name)}</div>`;
   }
@@ -139,7 +155,7 @@ async function loadPorts() {
   if (state.platform) p.set('platform', state.platform);
 
   let d;
-  try { d = await fetchJson('/api/ports?' + p.toString()); }
+  try { d = await fetchJson(API + '/ports?' + p.toString()); }
   catch (e) {
     if (my !== seq) return;
     $('#resultInfo').textContent = 'gagal memuat';
@@ -196,11 +212,11 @@ function detailHtml(p) {
 
   const initials = esc((p.game||'?').slice(0,2).toUpperCase());
   const cover = p.image_url
-    ? `<img src="${esc(p.image_url)}" alt="${esc(p.game)}"
+    ? `<img src="${esc(asetAPI(p.image_url))}" alt="${esc(p.game)}"
          onerror="this.parentElement.insertAdjacentHTML('afterbegin','<div class=&quot;ph&quot;>${initials}</div>');this.remove()">`
     : `<div class="ph">${initials}</div>`;
 
-  const dlBase = `/dl/${encodeURIComponent(p.slug)}`;
+  const dlBase = API_ORIGIN + '/dl/' + encodeURIComponent(p.slug);
   const btnPort = p.download_url
     ? `<a class="btn primary" href="${dlBase}/port" rel="nofollow">
          <span>Unduh Port</span><small>langsung jalan di Android</small></a>`
@@ -261,7 +277,7 @@ async function loadDetail(slug) {
     '<div class="state"><div class="spinner"></div><div class="big">Memuat detail…</div></div>';
 
   let p;
-  try { p = await fetchJson('/api/ports/' + encodeURIComponent(slug)); }
+  try { p = await fetchJson(API + '/ports/' + encodeURIComponent(slug)); }
   catch (e) {
     document.title = 'Tidak ditemukan — GamePort';
     $('#detailContent').innerHTML = `
