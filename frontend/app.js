@@ -15,7 +15,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&
  */
 const SAMA_ORIGIN = location.hostname !== 'gameport.web.id';
 const API_ORIGIN  = SAMA_ORIGIN ? '' : 'https://api.gameport.web.id';
-const API         = API_ORIGIN + '/v1';
+const API         = API_ORIGIN + '/api/v1';
 
 /* Berkas dari backend (gambar sampul, dsb) ditulis relative di database.
    Dari origin berbeda, harus diawali origin API. */

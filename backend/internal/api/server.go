@@ -62,7 +62,7 @@ func (s *Server) Routes() http.Handler {
 		{"/ports/{slug}/download", s.handleDownload},
 		{"/ports/{slug}/iso", s.handleIsoDownload},
 	}
-	for _, pre := range []string{"/api", "/v1"} {
+	for _, pre := range []string{"/api/v1", "/api"} {
 		for _, r := range publik {
 			mux.HandleFunc("GET "+pre+r.pola, r.h)
 		}
@@ -99,9 +99,9 @@ func (s *Server) middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		// CORS hanya untuk endpoint publik yang diakses frontend terpisah.
-		// /v1 adalah prefix baru; /api dijaga sebagai alias masa migrasi.
-		if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/v1/") {
+		// CORS untuk endpoint publik yang diakses frontend terpisah.
+		// /api/v1 adalah prefix baru; /api/... dijaga sebagai alias migrasi.
+		if strings.HasPrefix(r.URL.Path, "/api/") {
 			if origin := s.allowedOrigin(r.Header.Get("Origin")); origin != "" {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 				w.Header().Set("Vary", "Origin")

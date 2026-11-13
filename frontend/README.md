@@ -9,7 +9,7 @@ Di `app.js`, bagian atas:
 ```js
 const SAMA_ORIGIN = location.hostname !== 'gameport.web.id';
 const API_ORIGIN  = SAMA_ORIGIN ? '' : 'https://api.gameport.web.id';
-const API         = API_ORIGIN + '/v1';
+const API         = API_ORIGIN + '/api/v1';
 ```
 
 - Saat halaman dilayani **backend sendiri** (dev atau masa monolitik),

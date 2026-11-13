@@ -392,9 +392,9 @@ func urlTersedia(p *db.PortDetail, kind string) bool {
 }
 
 func (s *Server) tebusURL(slug, kind, token string) string {
-	rute := "/api/ports/" + slug + "/download"
+	rute := "/api/v1/ports/" + slug + "/download"
 	if kind == "iso" {
-		rute = "/api/ports/" + slug + "/iso"
+		rute = "/api/v1/ports/" + slug + "/iso"
 	}
 	return rute + "?t=" + token
 }
