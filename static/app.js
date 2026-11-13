@@ -200,13 +200,14 @@ function detailHtml(p) {
          onerror="this.parentElement.insertAdjacentHTML('afterbegin','<div class=&quot;ph&quot;>${initials}</div>');this.remove()">`
     : `<div class="ph">${initials}</div>`;
 
+  const dlBase = `/dl/${encodeURIComponent(p.slug)}`;
   const btnPort = p.download_url
-    ? `<a class="btn primary" href="/api/ports/${esc(p.slug)}/download" rel="nofollow">
+    ? `<a class="btn primary" href="${dlBase}/port" rel="nofollow">
          <span>Unduh Port</span><small>langsung jalan di Android</small></a>`
     : `<span class="btn disabled"><span>Port belum tersedia</span><small>penyedia belum mengunggah</small></span>`;
 
   const btnIso = p.iso_url
-    ? `<a class="btn ghost" href="/api/ports/${esc(p.slug)}/iso" rel="nofollow">
+    ? `<a class="btn ghost" href="${dlBase}/iso" rel="nofollow">
          <span>Unduh ISO / Game</span><small>file game asli</small></a>`
     : '';
 
