@@ -65,9 +65,19 @@ gameport.web.id {
         }
     }
 
-    # Cache aset statis di browser selama 7 hari
-    @statis path /static/* /uploads/*
-    header @statis Cache-Control "public, max-age=604800"
+    # HTML: selalu revalidasi, supaya deploy langsung terlihat
+    @html path / /port/* /admin
+    header @html Cache-Control "no-cache"
+
+    # Kode & gaya: revalidasi tiap muat (berkasnya kecil, 304 murah).
+    # Cache panjang di sini pernah membuat app.js lama bertahan 7 hari di HP
+    # pengguna, sehingga fitur baru tidak muncul walau server sudah diperbarui.
+    @statis path /static/*
+    header @statis Cache-Control "no-cache"
+
+    # Gambar unggahan: nama berkas unik, aman di-cache lama
+    @uploads path /uploads/*
+    header @uploads Cache-Control "public, max-age=604800"
 
     log {
         output file /var/log/caddy/gameport.log {
