@@ -107,12 +107,6 @@ function cardHtml(p) {
   if (p.genre_name) meta.push(`<span class="mi g">${esc(p.genre_name)}</span>`);
 
   const url = `/port/${encodeURIComponent(p.slug)}`;
-  const dl = p.download_url
-    ? `<a class="dl" href="/api/ports/${esc(p.slug)}/download" rel="nofollow" data-nolink title="Unduh port untuk Android">Port ↓</a>`
-    : `<span class="dl off">Port belum ada</span>`;
-  const iso = p.iso_url
-    ? `<a class="dl iso" href="/api/ports/${esc(p.slug)}/iso" rel="nofollow" data-nolink title="Unduh ISO / file game asli">ISO ↓</a>`
-    : '';
 
   return `
   <article class="card" data-slug="${esc(p.slug)}">
@@ -127,7 +121,7 @@ function cardHtml(p) {
       <div class="card-foot">
         <span class="stat-mini"><span>👁 ${Number(p.view_count||0).toLocaleString('id-ID')}</span>
         <span>↓ ${Number(p.download_count||0).toLocaleString('id-ID')}</span></span>
-        <span class="dl-group">${iso}${dl}</span>
+        <span class="card-more">Detail →</span>
       </div>
     </div>
   </article>`;
