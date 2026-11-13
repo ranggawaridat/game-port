@@ -68,6 +68,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("PUT "+ap+"/api/port/{id}", s.wajibAdmin(s.handleAdminUpdate))
 	mux.HandleFunc("DELETE "+ap+"/api/port/{id}", s.wajibAdmin(s.handleAdminDelete))
 	mux.HandleFunc("POST "+ap+"/api/upload", s.wajibAdmin(s.handleAdminUpload))
+	mux.HandleFunc("GET "+ap+"/api/settings", s.wajibAdmin(s.handleAdminGetSettings))
+	mux.HandleFunc("POST "+ap+"/api/settings", s.wajibAdmin(s.handleAdminSaveSettings))
 
 	// ---------- Static ----------
 	mux.HandleFunc("GET /", s.handleStatic)

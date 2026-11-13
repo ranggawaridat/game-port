@@ -83,7 +83,39 @@ document.querySelectorAll('.nav-item').forEach(btn => {
     $('#tab-' + tab).hidden = false;
     if (tab === 'stat') muatStat();
     if (tab === 'list') muatList();
+    if (tab === 'safelink') muatSafelink();
   });
+});
+
+/* ---------------- safelink ---------------- */
+async function muatSafelink() {
+  const msg = $('#slMsg');
+  try {
+    const d = await api('/settings');
+    $('#slAd').value = d.safelink_ad_html || '';
+    $('#slStatus').textContent = d.safelink_enabled
+      ? `aktif — tunggu ${d.safelink_wait}s, token ${d.safelink_ttl}s`
+      : 'nonaktif — unduhan langsung ke penyedia';
+    msg.textContent = '';
+  } catch (e) { msg.textContent = e.message; }
+}
+
+$('#slSave').addEventListener('click', async () => {
+  const btn = $('#slSave'), msg = $('#slMsg');
+  btn.disabled = true; msg.textContent = 'menyimpan…';
+  try {
+    await api('/settings', {
+      method: 'POST',
+      body: JSON.stringify({ safelink_ad_html: $('#slAd').value }),
+    });
+    msg.textContent = 'tersimpan';
+    toast('Script iklan disimpan');
+  } catch (e) {
+    msg.textContent = e.message;
+    toast(e.message, true);
+  } finally {
+    btn.disabled = false;
+  }
 });
 
 /* ---------------- statistik ---------------- */

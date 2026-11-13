@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex, nofollow, noarchive">
 <title>Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/admin.css?v=4">
+<link rel="stylesheet" href="/static/admin.css?v=5">
 </head>
 <body>
 
@@ -29,6 +29,7 @@
       <button class="nav-item active" data-tab="stat">Statistik</button>
       <button class="nav-item" data-tab="list">Daftar Port</button>
       <button class="nav-item" data-tab="form">Tambah Port</button>
+      <button class="nav-item" data-tab="safelink">Safelink</button>
     </nav>
     <div class="side-foot">
       <a href="/" target="_blank" rel="noopener">Lihat situs ↗</a>
@@ -173,10 +174,43 @@
         </div>
       </form>
     </section>
+
+    <!-- ---------- Safelink ---------- -->
+    <section id="tab-safelink" class="tab" hidden>
+      <div class="page-head">
+        <h1>Safelink</h1>
+        <span id="slStatus" class="hint"></span>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Script iklan</h2></div>
+        <p class="hint" style="margin-bottom:10px">
+          Tempel kode iklan di sini apa adanya (termasuk tag
+          <code>&lt;script&gt;</code>). Kode ini dimuat di halaman gerbang
+          sebelum unduhan. Perubahan langsung berlaku, tanpa deploy.
+        </p>
+        <textarea id="slAd" rows="14" spellcheck="false"
+          placeholder="&lt;script src=&quot;https://…&quot;&gt;&lt;/script&gt;"
+          style="width:100%;font-family:var(--mono);font-size:12px"></textarea>
+        <div class="form-actions" style="margin-top:12px">
+          <button type="button" class="btn primary" id="slSave">Simpan script</button>
+          <span id="slMsg" class="hint"></span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>Cara mengaktifkan</h2></div>
+        <p class="hint">
+          Halaman gerbang hanya dipakai bila <code>SAFELINK_ENABLED=true</code>
+          di <code>.env</code>. Selama <code>false</code>, tombol unduhan
+          meneruskan langsung ke penyedia dan script di atas tidak dimuat.
+        </p>
+      </div>
+    </section>
   </main>
 </div>
 
 <div id="toast" class="toast" hidden></div>
-<script src="/static/admin.js?v=4"></script>
+<script src="/static/admin.js?v=5"></script>
 </body>
 </html>
