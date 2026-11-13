@@ -17,6 +17,8 @@
 set -uo pipefail
 
 DEV=/opt/data/workspace/projects/game-port
+BACKEND=$DEV/backend
+FRONTEND=$DEV/frontend
 DEP=/opt/data/workspace/deployed/game-port
 MANAGER=/opt/data/gameport/manager.sh
 PGBIN=/opt/data/pylibs/embedded_postgres/pginstall/bin
@@ -27,7 +29,7 @@ say() { printf '\033[1m%s\033[0m\n' "$*"; }
 ok()  { printf '  \033[32m✓\033[0m %s\n' "$*"; }
 bad() { printf '  \033[31m✗\033[0m %s\n' "$*"; }
 
-cd "$DEV" || { bad "folder dev tidak ada"; exit 1; }
+cd "$BACKEND" || { bad "folder backend tidak ada"; exit 1; }
 
 # ── 1. build ────────────────────────────────────────────────────────────────
 say "1. build"
@@ -53,8 +55,8 @@ sleep 1
 say "4. salin ke produksi"
 cp /tmp/gp_deploy "$DEP/gameport" && chmod +x "$DEP/gameport" \
   && ok "binary" || { bad "binary gagal disalin"; rm -f /tmp/gp_deploy; exit 1; }
-cp "$DEV"/static/* "$DEP/static/" && ok "static/" || bad "static gagal"
-cp "$DEV"/db/seed.sql "$DEP/seed.sql" 2>/dev/null && ok "seed.sql"
+cp "$FRONTEND"/* "$DEP/static/" && ok "frontend/" || bad "frontend gagal"
+cp "$BACKEND"/db/seed.sql "$DEP/seed.sql" 2>/dev/null && ok "seed.sql"
 rm -f /tmp/gp_deploy
 
 # ── 5. nyalakan database lebih dulu ─────────────────────────────────────────

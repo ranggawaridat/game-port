@@ -39,19 +39,36 @@ func errInternal(m string) error    { return internalErr{m} }
 func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
 
-	// ---------- Publik ----------
-	mux.HandleFunc("GET /api/health", s.handleHealth)
-	mux.HandleFunc("GET /api/statistik", s.handleStatistik)
-	mux.HandleFunc("GET /api/kategori", s.handleKategori)
-	mux.HandleFunc("GET /api/status", s.handleStatus)
-	mux.HandleFunc("GET /api/platform", s.handlePlatform)
-	mux.HandleFunc("GET /api/genre", s.handleGenre)
-	mux.HandleFunc("GET /api/ports", s.handlePorts)
-	mux.HandleFunc("GET /api/ports/{slug}", s.handlePortDetail)
-	mux.HandleFunc("GET /api/ports/{slug}/download", s.handleDownload)
-	mux.HandleFunc("GET /api/ports/{slug}/iso", s.handleIsoDownload)
+	// ---------- Publik (ber-version) ----------
+	//
+	// Pola ditulis TANPA awalan, lalu dipasang di dua awalan:
+	//   /v1/...  versi API untuk frontend terpisah (api.gameport.web.id)
+	//   /api/... alias lama yang masih dipakai frontend monolitik
+	//
+	// Alias lama hanya dijaga selama masa migrasi frontend; setelah
+	// frontend terpisah benar-benar live, alias ini boleh dibuang.
+	publik := []struct {
+		pola string
+		h    http.HandlerFunc
+	}{
+		{"/health", s.handleHealth},
+		{"/statistik", s.handleStatistik},
+		{"/kategori", s.handleKategori},
+		{"/status", s.handleStatus},
+		{"/platform", s.handlePlatform},
+		{"/genre", s.handleGenre},
+		{"/ports", s.handlePorts},
+		{"/ports/{slug}", s.handlePortDetail},
+		{"/ports/{slug}/download", s.handleDownload},
+		{"/ports/{slug}/iso", s.handleIsoDownload},
+	}
+	for _, pre := range []string{"/api", "/v1"} {
+		for _, r := range publik {
+			mux.HandleFunc("GET "+pre+r.pola, r.h)
+		}
+	}
 
-	// Safelink: gerbang iklan sebelum unduhan
+	// Safelink: gerbang iklan sebelum unduhan (halaman publik, tanpa versi)
 	mux.HandleFunc("GET /dl/{slug}/{kind}", s.handleSafeLinkPage)
 	mux.HandleFunc("POST /dl/{slug}/{kind}/mint", s.handleSafeLinkMint)
 
@@ -82,8 +99,9 @@ func (s *Server) middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		// CORS hanya untuk /api/ publik
-		if strings.HasPrefix(r.URL.Path, "/api/") {
+		// CORS hanya untuk endpoint publik yang diakses frontend terpisah.
+		// /v1 adalah prefix baru; /api dijaga sebagai alias masa migrasi.
+		if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/v1/") {
 			if origin := s.allowedOrigin(r.Header.Get("Origin")); origin != "" {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 				w.Header().Set("Vary", "Origin")

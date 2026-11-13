@@ -3,11 +3,11 @@ FROM golang:1.23-alpine AS build
 
 WORKDIR /src
 
-COPY go.mod go.sum ./
+COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 
-COPY cmd ./cmd
-COPY internal ./internal
+COPY backend/cmd ./cmd
+COPY backend/internal ./internal
 
 RUN CGO_ENABLED=0 GOOS=linux go build \
     -trimpath \
@@ -23,7 +23,7 @@ RUN apk add --no-cache ca-certificates tzdata \
 WORKDIR /app
 
 COPY --from=build /out/server /app/gameport
-COPY static /app/static
+COPY frontend /app/static
 
 RUN mkdir -p /app/uploads && chown -R app:app /app
 
