@@ -251,6 +251,7 @@ async function editPort(id) {
     $('#f_status').value = p.status_slug || '';
     $('#f_author').value = p.author || '';
     $('#f_download').value = p.download_url || '';
+    $('#f_iso').value = p.iso_url || '';
     $('#f_desc').value = p.description || '';
     $('#f_image').value = p.image_url || '';
     $('#f_published').checked = !!p.published;
@@ -286,6 +287,7 @@ $('#portForm').addEventListener('submit', async (e) => {
     status_slug: $('#f_status').value,
     image_url: $('#f_image').value.trim() || null,
     download_url: $('#f_download').value.trim() || null,
+    iso_url: $('#f_iso').value.trim() || null,
     published: $('#f_published').checked,
     needs_own_data: $('#f_owndata').checked,
     platforms,

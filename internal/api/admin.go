@@ -193,6 +193,14 @@ func decodePortInput(r *http.Request) (db.PortInput, error) {
 			in.DownloadURL = &v
 		}
 	}
+	if in.IsoURL != nil {
+		v := strings.TrimSpace(*in.IsoURL)
+		if v == "" {
+			in.IsoURL = nil
+		} else {
+			in.IsoURL = &v
+		}
+	}
 	if in.GenreSlug != nil {
 		v := strings.TrimSpace(*in.GenreSlug)
 		if v == "" {
