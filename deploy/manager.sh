@@ -96,6 +96,9 @@ stop_app() {
       [ -d "/proc/$p" ] || continue
       [ "$p" = "$$" ] && continue
       exe=$(readlink "/proc/$p/exe" 2>/dev/null) || continue
+      # Binary yang sudah diganti saat proses berjalan terbaca "… (deleted)".
+      # Tanpa dilepas sufiksnya, proses lama tidak pernah ikut dimatikan.
+      exe=${exe% (deleted)}
       if [ "$exe" = "$APP" ]; then
         found=1
         kill -9 "$p" 2>/dev/null

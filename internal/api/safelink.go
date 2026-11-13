@@ -132,6 +132,12 @@ h1{font-size:clamp(19px,4.4vw,25px);letter-spacing:-.02em;line-height:1.25;margi
 </head>
 <body>
 <div class="bar"><span class="dot"></span><b>GamePort</b></div>
+
+<!-- Umpan deteksi adblock. Selama tidak diblokir, ukurannya 1x1 piksel
+     dan dipindah keluar layar sehingga tidak terlihat siapa pun. -->
+<div id="adBait" class="adsbox ad-banner adsbygoogle"
+     style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px"></div>
+
 <div class="wrap">
   <h1>{{.Game}}</h1>
   <div class="sub">Menyiapkan unduhan · {{.KindText}}</div>
@@ -159,17 +165,59 @@ h1{font-size:clamp(19px,4.4vw,25px);letter-spacing:-.02em;line-height:1.25;margi
   var btn     = document.getElementById('go');
   var msgEl   = document.getElementById('msg');
   var sisa    = tunggu;
+  var selesai = false;
 
-  var t = setInterval(function(){
-    sisa--;
-    if (sisa > 0) { numEl.textContent = sisa; return; }
-    clearInterval(t);
-    numEl.textContent = '0';
+  // Adblock memblokir elemen dengan kelas/ID yang dikenali filternya.
+  // Umpan disembunyikan lewat display:none atau ukuran 0 -> terdeteksi.
+  function terblokir() {
+    var b = document.getElementById('adBait');
+    if (!b) return false;
+    var cs = getComputedStyle(b);
+    return b.offsetHeight === 0 || b.offsetWidth === 0 ||
+           cs.display === 'none' || cs.visibility === 'hidden';
+  }
+
+  function kunciKarenaAdblock() {
+    btn.disabled = true;
+    btn.textContent = 'Adblock terdeteksi';
+    msgEl.className = 'msg bad';
+    msgEl.textContent = 'Matikan adblock / pemblokir iklan untuk halaman ini. Tombol akan aktif sendiri.';
+  }
+
+  function bukaTombol() {
     btn.disabled = false;
     btn.textContent = 'Lanjut ke unduhan';
+    msgEl.className = 'msg';
+    msgEl.textContent = '';
+  }
+
+  // Hitungan mundur. Tidak berhenti karena adblock; pengawas di bawah yang
+  // menentukan tombol boleh dipakai atau tidak.
+  var t = setInterval(function(){
+    if (sisa > 0) {
+      sisa--;
+      numEl.textContent = sisa > 0 ? sisa : '0';
+    }
+    if (sisa <= 0) {
+      clearInterval(t);
+      selesai = true;
+      if (!terblokir()) bukaTombol();
+    }
   }, 1000);
 
+  // Pengawas tetap: mengunci selama adblock aktif, dan membuka lagi kalau
+  // pengguna mematikan pemblokirnya tanpa memuat ulang halaman.
+  setInterval(function(){
+    if (terblokir()) return kunciKarenaAdblock();
+    if (selesai) bukaTombol();
+  }, 1000);
+
+  if (terblokir()) kunciKarenaAdblock();
+
   btn.addEventListener('click', function(){
+    if (!selesai) return;
+    if (terblokir()) { kunciKarenaAdblock(); return; }
+
     btn.disabled = true;
     btn.textContent = 'Membuka…';
     msgEl.className = 'msg';
@@ -178,7 +226,7 @@ h1{font-size:clamp(19px,4.4vw,25px);letter-spacing:-.02em;line-height:1.25;margi
     fetch('/dl/' + encodeURIComponent(slug) + '/' + kind + '/mint', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({nonce: nonce})
+      body: JSON.stringify({nonce: nonce, ad_ok: true})
     })
     .then(function(r){ return r.json().then(function(b){ return {ok:r.ok, body:b}; }); })
     .then(function(res){
@@ -268,9 +316,18 @@ func (s *Server) handleSafeLinkMint(w http.ResponseWriter, r *http.Request) {
 
 	var in struct {
 		Nonce string `json:"nonce"`
+		AdOK  bool   `json:"ad_ok"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<10)).Decode(&in); err != nil {
 		s.writeErr(w, http.StatusBadRequest, "permintaan tidak valid")
+		return
+	}
+	if !in.AdOK {
+		// Penanda ini datang dari halaman dan bisa dipalsukan; gunanya menahan
+		// skrip sederhana, bukan penyerang serius. Nonce sengaja TIDAK dipakai
+		// di sini supaya pengguna yang mematikan adblock bisa mencoba lagi
+		// tanpa memuat ulang halaman.
+		s.writeErr(w, http.StatusForbidden, "matikan adblock lalu coba lagi")
 		return
 	}
 	if in.Nonce == "" {
