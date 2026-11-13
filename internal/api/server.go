@@ -49,6 +49,7 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/ports", s.handlePorts)
 	mux.HandleFunc("GET /api/ports/{slug}", s.handlePortDetail)
 	mux.HandleFunc("GET /api/ports/{slug}/download", s.handleDownload)
+	mux.HandleFunc("GET /api/ports/{slug}/iso", s.handleIsoDownload)
 
 	// ---------- Admin (path rahasia, tidak ditautkan dari publik) ----------
 	ap := s.cfg.AdminPath
@@ -315,6 +316,24 @@ func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {
 	_ = s.store.CatatEvent(ctx, "download", &id, nil)
 
 	http.Redirect(w, r, *p.DownloadURL, http.StatusFound)
+}
+
+// handleIsoDownload mengarahkan ke link ISO/game (opsional) dan mencatat event.
+func (s *Server) handleIsoDownload(w http.ResponseWriter, r *http.Request) {
+	slug := r.PathValue("slug")
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	p, err := s.store.GetPort(ctx, slug, false)
+	if err != nil || p.IsoURL == nil || *p.IsoURL == "" {
+		s.writeErr(w, http.StatusNotFound, "link ISO tidak tersedia")
+		return
+	}
+	id := p.ID
+	s.store.TambahDownload(ctx, id)
+	_ = s.store.CatatEvent(ctx, "iso", &id, nil)
+
+	http.Redirect(w, r, *p.IsoURL, http.StatusFound)
 }
 
 // handleStatic menyajikan frontend publik.

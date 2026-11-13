@@ -106,23 +106,28 @@ function cardHtml(p) {
   if (p.file_size) meta.push(`<span class="mi">${esc(p.file_size)}</span>`);
   if (p.genre_name) meta.push(`<span class="mi g">${esc(p.genre_name)}</span>`);
 
+  const url = `/port/${encodeURIComponent(p.slug)}`;
   const dl = p.download_url
-    ? `<a class="dl" href="/api/ports/${esc(p.slug)}/download" rel="nofollow">Unduh ↓</a>`
-    : `<span class="dl off">Belum tersedia</span>`;
+    ? `<a class="dl" href="/api/ports/${esc(p.slug)}/download" rel="nofollow" data-nolink title="Unduh port untuk Android">Port ↓</a>`
+    : `<span class="dl off">Port belum ada</span>`;
+  const iso = p.iso_url
+    ? `<a class="dl iso" href="/api/ports/${esc(p.slug)}/iso" rel="nofollow" data-nolink title="Unduh ISO / file game asli">ISO ↓</a>`
+    : '';
 
   return `
-  <article class="card">
+  <article class="card" data-slug="${esc(p.slug)}">
+    <a class="card-hit" href="${url}" aria-label="${esc(p.game)}"></a>
     ${thumbHtml(p)}
     <div class="body">
       <span class="cat">${esc(p.category_name)}</span>
-      <h3>${esc(p.game)}</h3>
+      <h3><a href="${url}">${esc(p.game)}</a></h3>
       <div class="metarow">${meta.join('')}</div>
       <p>${esc(p.description) || '<em style="color:var(--fg-3)">tanpa deskripsi</em>'}</p>
       <div class="tags">${platforms}</div>
       <div class="card-foot">
         <span class="stat-mini"><span>👁 ${Number(p.view_count||0).toLocaleString('id-ID')}</span>
         <span>↓ ${Number(p.download_count||0).toLocaleString('id-ID')}</span></span>
-        ${dl}
+        <span class="dl-group">${iso}${dl}</span>
       </div>
     </div>
   </article>`;
@@ -185,9 +190,112 @@ $('#catChips').addEventListener('click', e => {
   state.kategori = b.dataset.cat; state.offset = 0; loadPorts();
 });
 
+// ───────────────────────── halaman detail ─────────────────────────
+function detailHtml(p) {
+  const plats = (p.platforms||[])
+    .map(x => `<span class="tag">${esc(PLATFORM_LABEL[x]||x)}</span>`).join('');
+  const meta = [
+    p.version   ? `v${esc(p.version)}` : '',
+    p.file_size ? esc(p.file_size) : '',
+    p.genre_name? esc(p.genre_name) : ''
+  ].filter(Boolean).map(x => `<span class="mi">${x}</span>`).join('');
+
+  const initials = esc((p.game||'?').slice(0,2).toUpperCase());
+  const cover = p.image_url
+    ? `<img src="${esc(p.image_url)}" alt="${esc(p.game)}"
+         onerror="this.parentElement.insertAdjacentHTML('afterbegin','<div class=&quot;ph&quot;>${initials}</div>');this.remove()">`
+    : `<div class="ph">${initials}</div>`;
+
+  const btnPort = p.download_url
+    ? `<a class="btn primary" href="/api/ports/${esc(p.slug)}/download" rel="nofollow">
+         <span>Unduh Port</span><small>langsung jalan di Android</small></a>`
+    : `<span class="btn disabled"><span>Port belum tersedia</span><small>penyedia belum mengunggah</small></span>`;
+
+  const btnIso = p.iso_url
+    ? `<a class="btn ghost" href="/api/ports/${esc(p.slug)}/iso" rel="nofollow">
+         <span>Unduh ISO / Game</span><small>file game asli</small></a>`
+    : '';
+
+  const related = (p.related && p.related.length)
+    ? `<section class="detail-related"><h2>Port terkait</h2>
+         <div class="grid">${p.related.map(cardHtml).join('')}</div></section>`
+    : '';
+
+  return `
+  <nav class="crumbs"><a href="/">Katalog</a><span>›</span><span class="now">${esc(p.game)}</span></nav>
+  <article class="detail">
+    <div class="detail-top">
+      <div class="detail-cover">${cover}${badgeHtml(p.status_slug, p.status_name)}</div>
+      <div class="detail-info">
+        <span class="cat">${esc(p.category_name)}</span>
+        <h1>${esc(p.game)}</h1>
+        <div class="metarow">${meta}</div>
+        <div class="tags">${plats}</div>
+        <div class="detail-stats">
+          <div><b>${Number(p.view_count||0).toLocaleString('id-ID')}</b><span>dilihat</span></div>
+          <div><b>${Number(p.download_count||0).toLocaleString('id-ID')}</b><span>diunduh</span></div>
+          ${p.needs_own_data ? '<div><b>Ya</b><span>butuh data asli</span></div>' : ''}
+        </div>
+        <div class="detail-actions">${btnPort}${btnIso}</div>
+        ${p.author ? `<div class="author">Porter: <strong>${esc(p.author)}</strong></div>` : ''}
+      </div>
+    </div>
+    <section class="detail-desc">
+      <h2>Deskripsi</h2>
+      <p>${esc(p.description) || '<em style="color:var(--fg-3)">Belum ada deskripsi.</em>'}</p>
+    </section>
+    ${related}
+  </article>`;
+}
+
+async function loadDetail(slug) {
+  $('#homeView').hidden = true;
+  $('#detailView').hidden = false;
+  $('#detailContent').innerHTML =
+    '<div class="state"><div class="spinner"></div><div class="big">Memuat detail…</div></div>';
+
+  let p;
+  try { p = await fetchJson('/api/ports/' + encodeURIComponent(slug)); }
+  catch (e) {
+    document.title = 'Tidak ditemukan — GamePort';
+    $('#detailContent').innerHTML = `
+      <div class="state" style="padding-top:60px">
+        <div class="big">Port tidak ditemukan.</div>
+        <div style="margin-bottom:15px">${esc(e.message)}</div>
+        <a class="btn primary" href="/" style="display:inline-flex;flex-direction:row"><span>← Kembali ke katalog</span></a>
+      </div>`;
+    return;
+  }
+  document.title = `${p.game} — GamePort`;
+  $('#detailContent').innerHTML = detailHtml(p);
+  window.scrollTo({ top: 0, behavior: 'instant' });
+}
+
+// klik kartu → halaman detail (kecuali menekan tombol unduh)
+function pasangKlikKartu(root) {
+  root.addEventListener('click', (e) => {
+    if (e.target.closest('[data-nolink]')) return;
+    const card = e.target.closest('.card[data-slug]');
+    if (!card) return;
+    if (e.metaKey || e.ctrlKey || e.shiftKey) return;   // biarkan buka tab baru
+    window.location.href = '/port/' + encodeURIComponent(card.dataset.slug);
+  });
+}
+
+const detailRoute = location.pathname.match(/^\/port\/([^/]+)\/?$/);
+
 (async function init() {
   await checkHealth();
+
+  if (detailRoute) {
+    await loadDetail(decodeURIComponent(detailRoute[1]));
+    setInterval(checkHealth, 60000);
+    return;
+  }
+
   await Promise.all([loadStats(), loadFilters()]);
   await loadPorts();
+  pasangKlikKartu($('#content'));
+  pasangKlikKartu($('#detailContent'));
   setInterval(checkHealth, 60000);
 })();
