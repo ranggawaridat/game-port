@@ -1,93 +1,161 @@
 # =============================================================================
-# Caddyfile — GamePort dengan domain + HTTPS otomatis
+# Caddyfile — GamePort tiga subdomain
 #
-# Domain : gameport.web.id
-# IP VPS : 149.41.192.124
+#   gameport.web.id        frontend statis di Vercel
+#   api.gameport.web.id    backend Go di VPS   (API ber-version, safelink, uploads)
+#   vps.gameport.web.id    panel admin        (login kamu)
 #
 # Arsitektur:
-#   Internet → Caddy (host :443, HTTPS) → 172.18.0.3:8181 (container) → GamePort
+#   [pengunjung] → Vercel (frontend) ──fetch──▶ api.gameport.web.id ─┐
+#   [kamu]       → vps.gameport.web.id ─────────────────────────────┤
+#                                                                    ▼
+#                                              backend Go (container, :8181)
+#
+# IP container backend: 172.18.0.3 (bisa berubah setelah recreate container:
+#   docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' alpha-hermes
+# )
 #
 # ---------------------------------------------------------------------------
-# CARA PASANG (di host)
+# KETIGA SUBDOMAIN PUNYA CERTIFIKAT SENDIRI
 #
-#   sudo cp Caddyfile.domain /etc/caddy/Caddyfile
+# Sebelum reload, pastikan TIGA record DNS mengarah ke 149.41.192.124:
+#   gameport.web.id        A  149.41.192.124   ← Vercel (cek dashboard Vercel)
+#   api.gameport.web.id    A  149.41.192.124
+#   vps.gameport.web.id    A  149.41.192.124
+#
+# Cek:  dig +short api.gameport.web.id
+# Kalau DNS belum resolve, Caddy gagal minta sertifikat untuk blok itu dan
+# mengulang terus — blok lain tetap jalan. Log:
+#   sudo journalctl -u caddy -n 50 --no-pager
+# ---------------------------------------------------------------------------
+#
+# CATATAN BLOK APEX: selama frontend masih dilayani VPS (monolitik), blok
+# gameport.web.id di bawah dipertahankan. Setelah frontend live di Vercel dan
+# DNS apex sudah dipindah ke Vercel, HAPUS blok gameport.web.id dari file ini
+# — kalau tidak, situs lama masih dilayani dari VPS dan bentrok dengan Vercel.
+# =============================================================================
+#
+# Pasang di host:
+#   sudo cp /opt/alpha/hermes/workspace/deployed/game-port/Caddyfile.domain /etc/caddy/Caddyfile
 #   sudo caddy validate --config /etc/caddy/Caddyfile
 #   sudo systemctl reload caddy
-#
-# Caddy otomatis meminta sertifikat Let's Encrypt untuk gameport.web.id dan
-# www.gameport.web.id. Tidak ada certbot, tidak ada cron renewal.
-#
-# SYARAT — ketiganya harus beres sebelum reload:
-#   1. DNS A record gameport.web.id → 149.41.192.124  (cek: dig +short)
-#   2. Port 80 terbuka  (Let's Encrypt pakai ini untuk verifikasi HTTP-01)
-#   3. Port 443 terbuka (untuk HTTPS)
-#      Buka di DUA tempat: ufw di server DAN Security Group di console Tencent.
-#
-# Kalau DNS belum mengarah, Caddy akan gagal minta sertifikat dan mengulang
-# terus. Lihat: sudo journalctl -u caddy -n 50 --no-pager
-# ---------------------------------------------------------------------------
-#
-# PENTING: di sini site address berupa NAMA DOMAIN, bukan ":80".
-# Itulah yang membuat Caddy mengaktifkan HTTPS otomatis.
-# =============================================================================
 
-gameport.web.id {
-    encode zstd gzip
+# ── API publik ──────────────────────────────────────────────────────────────
+api.gameport.web.id {
+	encode zstd gzip
 
-    # Batasi ukuran unggahan gambar (5 MB + margin)
-    request_body {
-        max_size 8MB
-    }
+	# Unduhan bisa besar (ISO 6 GB) dan unggahan sampul hingga 5 MB
+	request_body {
+		max_size 8MB
+	}
 
-    header {
-        # Paksa HTTPS selama 1 tahun. Hanya kirim di respons HTTPS.
-        Strict-Transport-Security "max-age=31536000; includeSubDomains"
-        X-Content-Type-Options nosniff
-        X-Frame-Options SAMEORIGIN
-        Referrer-Policy strict-origin-when-cross-origin
-        -Server
-    }
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
 
-    # Panel admin jangan diindeks mesin pencari
-    @admin path /admin*
-    header @admin X-Robots-Tag "noindex, nofollow, noarchive, noimageindex"
+	# CORS ditangani backend lewat header Access-Control-Allow-Origin,
+	# asalnya daftar origin eksplisit di CORS_ORIGINS — bukan wildcard.
 
-    # Teruskan ke GamePort di dalam container Hermes.
-    # Bila IP container berubah setelah recreate, cari yang baru:
-    #   docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' alpha-hermes
-    reverse_proxy 172.18.0.3:8181 {
-        # Wajib: dipakai GamePort untuk menandai cookie sesi sebagai Secure
-        header_up X-Forwarded-Proto {scheme}
-        header_up X-Real-IP {remote_host}
-        transport http {
-            read_timeout 60s
-            write_timeout 60s
-        }
-    }
+	reverse_proxy 172.18.0.3:8181 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Real-IP {remote_host}
+		transport http {
+			read_timeout 120s
+			write_timeout 120s
+		}
+	}
 
-    # HTML: selalu revalidasi, supaya deploy langsung terlihat
-    @html path / /port/* /admin
-    header @html Cache-Control "no-cache"
-
-    # Kode & gaya: revalidasi tiap muat (berkasnya kecil, 304 murah).
-    # Cache panjang di sini pernah membuat app.js lama bertahan 7 hari di HP
-    # pengguna, sehingga fitur baru tidak muncul walau server sudah diperbarui.
-    @statis path /static/*
-    header @statis Cache-Control "no-cache"
-
-    # Gambar unggahan: nama berkas unik, aman di-cache lama
-    @uploads path /uploads/*
-    header @uploads Cache-Control "public, max-age=604800"
-
-    log {
-        output file /var/log/caddy/gameport.log {
-            roll_size 10MB
-            roll_keep 3
-        }
-    }
+	log {
+		output file /var/log/caddy/gameport-api.log {
+			roll_size 10MB
+			roll_keep 3
+		}
+	}
 }
 
-# www diarahkan ke domain utama supaya tidak ada duplikat konten di mesin pencari
+# ── Panel admin (login kamu) ────────────────────────────────────────────────
+# Admin UI dilayani backend, dan fetch-nya relative ke origin ini —
+# satu origin, jadi cookie sesi bekerja tanpa CORS.
+vps.gameport.web.id {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		X-Frame-Options SAMEORIGIN
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	@admin path /admin*
+	header @admin X-Robots-Tag "noindex, nofollow, noarchive, noimageindex"
+
+	reverse_proxy 172.18.0.3:8181 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Real-IP {remote_host}
+	}
+
+	log {
+		output file /var/log/caddy/gameport-vps.log {
+			roll_size 10MB
+			roll_keep 3
+		}
+	}
+}
+
+# ── Frontend lama dari VPS (monolitik) ──────────────────────────────────────
+# Dipertahankan sampai frontend live di Vercel dan DNS apex sudah dipindah.
+# Setelah itu: hapus blok ini.
+gameport.web.id {
+	encode zstd gzip
+
+	request_body {
+		max_size 8MB
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		X-Frame-Options SAMEORIGIN
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	@admin path /admin*
+	header @admin X-Robots-Tag "noindex, nofollow, noarchive, noimageindex"
+
+	reverse_proxy 172.18.0.3:8181 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Real-IP {remote_host}
+	}
+
+	# HTML: selalu revalidasi, supaya deploy langsung terlihat
+	@html path / /port/* /admin
+	header @html Cache-Control "no-cache"
+
+	# Kode & gaya: revalidasi tiap muat (berkasnya kecil, 304 murah).
+	# Cache panjang di sini pernah membuat app.js lama bertahan 7 hari di HP
+	# pengguna, sehingga fitur baru tidak muncul walau server sudah diperbarui.
+	@statis path /static/*
+	header @statis Cache-Control "no-cache"
+
+	# Gambar unggahan: nama berkas unik, aman di-cache lama
+	@uploads path /uploads/*
+	header @uploads Cache-Control "public, max-age=604800"
+
+	log {
+		output file /var/log/caddy/gameport.log {
+			roll_size 10MB
+			roll_keep 3
+		}
+	}
+}
+
+# www diarahkan ke domain utama supaya tidak ada duplikat konten
 www.gameport.web.id {
-    redir https://gameport.web.id{uri} permanent
+	redir https://gameport.web.id{uri} permanent
 }
