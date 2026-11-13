@@ -47,6 +47,8 @@ CREATE TABLE IF NOT EXISTS ports (
     image_url      TEXT,
     download_url   TEXT,
     iso_url        TEXT,
+    source_url     TEXT,
+    install_notes  TEXT,
     view_count     BIGINT NOT NULL DEFAULT 0,
     download_count BIGINT NOT NULL DEFAULT 0,
     published      BOOLEAN NOT NULL DEFAULT true,
@@ -58,6 +60,11 @@ CREATE TABLE IF NOT EXISTS ports (
 -- Migrasi untuk database yang sudah ada sebelum kolom iso_url ditambahkan.
 -- Idempoten: aman dijalankan berulang.
 ALTER TABLE ports ADD COLUMN IF NOT EXISTS iso_url TEXT;
+
+-- Link sumber (repo/halaman asli port) dan catatan instalasi.
+-- Keduanya opsional; dipakai halaman detail bila diisi.
+ALTER TABLE ports ADD COLUMN IF NOT EXISTS source_url    TEXT;
+ALTER TABLE ports ADD COLUMN IF NOT EXISTS install_notes TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_ports_category ON ports(category_slug);
 CREATE INDEX IF NOT EXISTS idx_ports_status   ON ports(status_slug);
@@ -97,6 +104,7 @@ CREATE VIEW v_port_detail AS
 SELECT
     p.id, p.slug, p.game, p.game_sort, p.version, p.file_size, p.description,
     p.author, p.image_url, p.download_url, p.iso_url,
+    p.source_url, p.install_notes,
     p.view_count, p.download_count,
     p.published, p.needs_own_data, p.created_at, p.updated_at,
     c.slug AS category_slug, c.name AS category_name, c.urutan AS category_urutan,

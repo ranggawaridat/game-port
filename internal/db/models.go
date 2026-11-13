@@ -15,6 +15,8 @@ type Port struct {
 	ImageURL      *string   `json:"image_url"`
 	DownloadURL   *string   `json:"download_url"`
 	IsoURL        *string   `json:"iso_url"`
+	SourceURL     *string   `json:"source_url"`
+	InstallNotes  *string   `json:"install_notes"`
 	ViewCount     int64     `json:"view_count"`
 	DownloadCount int64     `json:"download_count"`
 	Published     bool      `json:"published"`
@@ -58,6 +60,8 @@ type PortInput struct {
 	ImageURL     *string  `json:"image_url"`
 	DownloadURL  *string  `json:"download_url"`
 	IsoURL       *string  `json:"iso_url"`
+	SourceURL    *string  `json:"source_url"`
+	InstallNotes *string  `json:"install_notes"`
 	Published    bool     `json:"published"`
 	NeedsOwnData bool     `json:"needs_own_data"`
 	Platforms    []string `json:"platforms"`

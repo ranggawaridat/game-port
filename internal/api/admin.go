@@ -201,6 +201,22 @@ func decodePortInput(r *http.Request) (db.PortInput, error) {
 			in.IsoURL = &v
 		}
 	}
+	if in.SourceURL != nil {
+		v := strings.TrimSpace(*in.SourceURL)
+		if v == "" {
+			in.SourceURL = nil
+		} else {
+			in.SourceURL = &v
+		}
+	}
+	if in.InstallNotes != nil {
+		v := strings.TrimSpace(*in.InstallNotes)
+		if v == "" {
+			in.InstallNotes = nil
+		} else {
+			in.InstallNotes = &v
+		}
+	}
 	if in.GenreSlug != nil {
 		v := strings.TrimSpace(*in.GenreSlug)
 		if v == "" {

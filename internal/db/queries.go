@@ -77,7 +77,8 @@ func buildWhere(f PortFilter) (string, []any) {
 }
 
 const portColumns = `id, slug, game, game_sort, version, file_size, description,
-	author, image_url, download_url, iso_url, view_count, download_count,
+	author, image_url, download_url, iso_url, source_url, install_notes,
+	view_count, download_count,
 	published, needs_own_data, created_at, updated_at,
 	category_slug, category_name, category_urutan,
 	status_slug, status_name, status_warna, status_bobot,
@@ -87,6 +88,7 @@ func scanPort(row pgx.Row, p *Port) error {
 	return row.Scan(
 		&p.ID, &p.Slug, &p.Game, &p.GameSort, &p.Version, &p.FileSize,
 		&p.Description, &p.Author, &p.ImageURL, &p.DownloadURL, &p.IsoURL,
+		&p.SourceURL, &p.InstallNotes,
 		&p.ViewCount, &p.DownloadCount, &p.Published, &p.NeedsOwnData,
 		&p.CreatedAt, &p.UpdatedAt,
 		&p.CategorySlug, &p.CategoryName, &p.CategoryOrder,
@@ -335,12 +337,14 @@ func (s *Store) CreatePort(ctx context.Context, in PortInput) (*Port, error) {
 	err = tx.QueryRow(ctx, `
 		INSERT INTO ports (slug, game, game_sort, version, file_size, genre_slug,
 		                   description, author, category_slug, status_slug,
-		                   image_url, download_url, iso_url, published, needs_own_data)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+		                   image_url, download_url, iso_url, source_url, install_notes,
+		                   published, needs_own_data)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
 		RETURNING id`,
 		slug, in.Game, strings.ToLower(in.Game), in.Version, in.FileSize,
 		in.GenreSlug, in.Description, in.Author, in.CategorySlug, in.StatusSlug,
-		in.ImageURL, in.DownloadURL, in.IsoURL, in.Published, in.NeedsOwnData).Scan(&id)
+		in.ImageURL, in.DownloadURL, in.IsoURL, in.SourceURL, in.InstallNotes,
+		in.Published, in.NeedsOwnData).Scan(&id)
 	if err != nil {
 		return nil, fmt.Errorf("insert port: %w", err)
 	}
@@ -372,11 +376,13 @@ func (s *Store) UpdatePort(ctx context.Context, id int64, in PortInput) (*Port, 
 		UPDATE ports SET slug=$1, game=$2, game_sort=$3, version=$4, file_size=$5,
 		       genre_slug=$6, description=$7, author=$8, category_slug=$9,
 		       status_slug=$10, image_url=$11, download_url=$12, iso_url=$13,
-		       published=$14, needs_own_data=$15, updated_at=now()
-		WHERE id=$16`,
+		       source_url=$14, install_notes=$15,
+		       published=$16, needs_own_data=$17, updated_at=now()
+		WHERE id=$18`,
 		slug, in.Game, strings.ToLower(in.Game), in.Version, in.FileSize,
 		in.GenreSlug, in.Description, in.Author, in.CategorySlug, in.StatusSlug,
-		in.ImageURL, in.DownloadURL, in.IsoURL, in.Published, in.NeedsOwnData, id)
+		in.ImageURL, in.DownloadURL, in.IsoURL, in.SourceURL, in.InstallNotes,
+		in.Published, in.NeedsOwnData, id)
 	if err != nil {
 		return nil, fmt.Errorf("update port: %w", err)
 	}
