@@ -194,9 +194,14 @@ footer{border-top:1px solid var(--line);padding:34px 0;font-size:12.5px;color:va
 .author strong{color:var(--fg-2);font-weight:500}
 
 .detail-desc{margin-top:34px;padding-top:24px;border-top:1px solid var(--line)}
-.detail-desc h2,.detail-related h2{font-size:15px;font-weight:600;margin-bottom:12px}
-.detail-desc p{font-size:14px;color:var(--fg-2);line-height:1.7;
+.detail-notes{margin-top:26px;padding-top:22px;border-top:1px solid var(--line)}
+.detail-desc h2,.detail-notes h2,.detail-related h2{font-size:15px;font-weight:600;margin-bottom:12px}
+.detail-desc p,.detail-notes p{font-size:14px;color:var(--fg-2);line-height:1.7;
   max-width:72ch;white-space:pre-wrap}
+.detail-notes p{background:var(--bg-2);border:1px solid var(--line);border-radius:10px;
+  padding:14px 16px}
+.author a{color:var(--accent-2);text-decoration:none}
+.author a:hover{text-decoration:underline}
 .detail-related{margin-top:38px;padding-top:24px;border-top:1px solid var(--line)}
 
 @media(max-width:760px){

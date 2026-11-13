@@ -221,6 +221,12 @@ function detailHtml(p) {
          <div class="grid">${p.related.map(cardHtml).join('')}</div></section>`
     : '';
 
+  let srcHost = '';
+  if (p.source_url) {
+    try { srcHost = new URL(p.source_url).hostname.replace(/^www\./, ''); }
+    catch (_) { srcHost = 'sumber'; }
+  }
+
   return `
   <nav class="crumbs"><a href="/">Katalog</a><span>›</span><span class="now">${esc(p.game)}</span></nav>
   <article class="detail">
@@ -238,12 +244,17 @@ function detailHtml(p) {
         </div>
         <div class="detail-actions">${btnPort}${btnIso}</div>
         ${p.author ? `<div class="author">Porter: <strong>${esc(p.author)}</strong></div>` : ''}
+        ${p.source_url ? `<div class="author">Sumber: <a href="${esc(p.source_url)}" target="_blank" rel="noopener nofollow">${esc(srcHost)}</a></div>` : ''}
       </div>
     </div>
     <section class="detail-desc">
       <h2>Deskripsi</h2>
       <p>${esc(p.description) || '<em style="color:var(--fg-3)">Belum ada deskripsi.</em>'}</p>
     </section>
+    ${p.install_notes ? `<section class="detail-notes">
+      <h2>Cara Instalasi</h2>
+      <p>${esc(p.install_notes)}</p>
+    </section>` : ''}
     ${related}
   </article>`;
 }
