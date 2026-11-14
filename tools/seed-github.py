@@ -228,14 +228,32 @@ def build():
     return rows, skipped, errors
 
 
-def to_sql(rows):
+def to_sql(rows, update=False):
     out = [
         "-- Dihasilkan tools/seed-github.py — jangan diedit tangan.",
         "-- Aman dijalankan berulang: slug yang sudah ada tidak ditimpa.",
-        "BEGIN;",
-        "",
     ]
+    if update:
+        out += [
+            "-- Mode --update: versi, ukuran, tautan, dan status ikut disegarkan",
+            "-- HANYA untuk baris yang tautannya masih menunjuk GitHub. Entri yang",
+            "-- sudah kamu ganti ke sfl.gl (atau apa pun selain GitHub) dibiarkan.",
+        ]
+    out += ["BEGIN;", ""]
     for r in rows:
+        if update:
+            konflik = (
+                "ON CONFLICT (slug) DO UPDATE SET\n"
+                "    version      = EXCLUDED.version,\n"
+                "    file_size    = EXCLUDED.file_size,\n"
+                "    download_url = EXCLUDED.download_url,\n"
+                "    status_slug  = EXCLUDED.status_slug,\n"
+                "    updated_at   = now()\n"
+                "WHERE ports.download_url IS NULL\n"
+                "   OR ports.download_url LIKE 'https://github.com/%';"
+            )
+        else:
+            konflik = "ON CONFLICT (slug) DO NOTHING;"
         out.append(
             "INSERT INTO ports (slug, game, game_sort, version, file_size,\n"
             "                   genre_slug, description, author, category_slug,\n"
@@ -248,7 +266,7 @@ def to_sql(rows):
             f"        {q(r['status'])}, {q(r['download_url'])}, "
             f"{q(r['source_url'])}, {q(r['notes'])},\n"
             f"        {str(r['needs_own_data']).lower()}, true)\n"
-            "ON CONFLICT (slug) DO NOTHING;"
+            + konflik
         )
         out.append(
             "INSERT INTO port_platforms (port_id, platform_slug)\n"
@@ -264,6 +282,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("-o", "--out", help="tulis SQL ke berkas ini")
     ap.add_argument("--json", action="store_true", help="cetak ringkasan JSON")
+    ap.add_argument("--update", action="store_true",
+                    help="segarkan versi/ukuran/tautan untuk entri yang masih "
+                         "menunjuk GitHub (entri yang sudah kamu ganti dibiarkan)")
     args = ap.parse_args()
 
     rows, skipped, errors = build()
@@ -272,7 +293,7 @@ def main():
         print(json.dumps({"masuk": rows, "dilewati": skipped, "error": errors},
                          indent=2, ensure_ascii=False))
 
-    sql = to_sql(rows)
+    sql = to_sql(rows, update=args.update)
     if args.out:
         with open(args.out, "w", encoding="utf-8") as f:
             f.write(sql)
