@@ -28,6 +28,9 @@ Thumbs.db
 
 # --- Docker ---
 pgdata/
+
+# --- Artifact build lokal (deploy/package.sh) ---
+dist/
 # --- state ETL ---
 etl/.etag
 
