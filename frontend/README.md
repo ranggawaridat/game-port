@@ -7,17 +7,13 @@ Situs publik + panel admin. Murni statis — semua data lewat API JSON.
 Di `app.js`, bagian atas:
 
 ```js
-const SAMA_ORIGIN = location.hostname !== 'gameport.web.id';
-const API_ORIGIN  = SAMA_ORIGIN ? '' : 'https://api.gameport.web.id';
-const API         = API_ORIGIN + '/api/v1';
+const API_ORIGIN = 'https://api.gameport.web.id';
+const API        = `${API_ORIGIN}/api/v1`;
 ```
 
-- Saat halaman dilayani **backend sendiri** (dev atau masa monolitik),
-  hostname bukan `gameport.web.id` → base kosong → semua URL relative.
-- Saat halaman dilayani **Vercel** di `gameport.web.id` → origin API eksplisit,
-  karena memanggil `api.gameport.web.id` berarti lintas origin.
-
-Kalau nanti domain atau subdomain berubah, cukup ubah dua konstanta itu.
+Situs publik selalu memanggil `api.gameport.web.id` (lintas origin dari
+Vercel). Kalau domain/subdomain berubah, ubah `API_ORIGIN` dan pastikan origin
+baru masuk `CORS_ORIGINS` di `.env` backend.
 
 ## Jalur yang sengaja tetap relative
 
@@ -42,4 +38,4 @@ detail bisa dibagikan sebagai URL langsung.
 - Tidak ada build step, tidak ada bundler — sengaja.
 - `vercel.json` hanya rewrite + header keamanan dasar.
 - Script iklan safelink TIDAK di sini; ia di panel admin
-  (`vps.gameport.web.id/admin` → tab Safelink), tersimpan di database.
+  (`vps.gameport.web.id` + `ADMIN_PATH` → tab Safelink), tersimpan di database.

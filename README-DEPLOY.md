@@ -1,4 +1,10 @@
-# GamePort — Panduan Deploy
+# GamePort — Panduan Deploy (cara lama: systemd di host)
+
+> **Catatan:** dokumen ini menjelaskan cara lama — binary + systemd di host.
+> Deployment produksi sekarang memakai frontend Vercel + backend container,
+> artifact GitHub Release, dan auto-deploy tanpa git clone di server.
+> Lihat **[deploy/README.md](deploy/README.md)** untuk alur yang dipakai
+> sekarang. Dokumen ini tetap disimpan untuk referensi.
 
 Panduan lengkap: dari VPS kosong sampai situs jalan dengan HTTPS.
 

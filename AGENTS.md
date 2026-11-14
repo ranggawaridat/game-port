@@ -8,13 +8,13 @@ manually through the admin panel — there is no scraper or crawler.
 
 - `backend/` is the Go module root (`go.mod`, `cmd/server`, `internal/...`, `db/seed.sql`).
   Run all Go commands from here; the repo root has no module.
-- `frontend/` is the entire UI, served by the backend as `STATIC_DIR`. No Node, bundler,
-  package manager, or build step.
+- `frontend/` holds the public UI (deployed to Vercel) and the admin UI
+  (`admin.html/admin.css/admin.js`), which the backend serves from `STATIC_DIR`. No Node,
+  bundler, package manager, or build step.
 - `backend/db/seed.sql` is both the schema and the idempotent migration.
-- `deploy/`, `Caddyfile*`, `gameport.service`, `docker-compose.yml`, `Dockerfile` are
-  production ops, not local dev tooling.
-- The root `README.md` still describes an older layout: it says `static/` and root-level
-  Go commands. The actual paths are `frontend/` and `backend/`.
+- `deploy/`, `.github/workflows/deploy-backend.yml`, `Caddyfile*`, `gameport.service`,
+  `docker-compose.yml`, `Dockerfile` are production ops, not local dev tooling.
+- Run Go commands from `backend/`; the repo root has no module.
 
 ## Commands
 
@@ -58,14 +58,16 @@ ADMIN_PASSWORD=dev go run ./cmd/server
 - Admin auth: `wajibAdmin` returns **404**, not 401, for unauthenticated non-HTML requests,
   and redirects HTML/HX requests to `ADMIN_PATH`. This hiding is intentional. The admin
   path is secret and never linked from the public site.
-- The static handler serves `STATIC_DIR`, falls back to `index.html` for extensionless
-  paths (so `/port/{slug}` works as a client route), and refuses to serve `ADMIN_PATH`.
+- The static handler serves `STATIC_DIR` (in production only the admin assets) and
+  refuses to serve `ADMIN_PATH`. It still falls back to `index.html` for extensionless
+  paths, but production has no `index.html`; public `/port/{slug}` is Vercel's route.
 - CORS applies only to paths starting with `/api/` and is driven by `CORS_ORIGINS`.
 - Uploads are capped at 5 MB and validated by magic bytes, not filename extension; they
   are served from `/uploads/{file}`.
-- The frontend and API are split in production: `app.js` hardcodes `gameport.web.id` to
-  choose relative URLs vs `https://api.gameport.web.id`. Edit those constants if domains
-  change, and keep using `asetAPI()` for database-stored relative image paths.
+- The frontend and API are split: `app.js` always targets
+  `https://api.gameport.web.id/api/v1` (Vercel → API is cross-origin). Edit `API_ORIGIN`
+  if domains change, add the new origin to `CORS_ORIGINS`, and keep using `asetAPI()` for
+  database-stored relative image paths.
 - `/port/{slug}` is a frontend route (Vercel rewrite in `frontend/vercel.json`), not an API
   route. Vercel Root Directory must be `frontend`.
 
@@ -82,17 +84,31 @@ ADMIN_PASSWORD=dev go run ./cmd/server
 
 ## Deploy and ops (do not run from a dev checkout)
 
-- `deploy/deploy.sh` and `deploy/manager.sh` hardcode `/opt/data/...` host/container paths
-  and stop production. `manager.sh` runs inside the Hermes container (Postgres over a unix
-  socket, app on `0.0.0.0:8181`). `deploy.sh` builds linux/amd64, stops the supervisor,
-  copies `frontend/*` to the deployed `static/`, applies the seed, then health-checks.
-- Caddy variants: `Caddyfile.domain` is the current three-subdomain setup (apex on Vercel,
-  `api.` and `vps.` proxied; it hardcodes container IP `172.18.0.3`), `Caddyfile` is a
-  single-domain template, `Caddyfile.ip` serves raw HTTP on `:80`. Never use a bare IP as a
-  Caddy site address — Caddy forces HTTPS with a 308.
-- `.env` values containing `&` or `?` must be quoted when sourced. `systemctl reload` does
-  not reread `.env` (use `restart`), and a running binary cannot be overwritten.
-- Deploy guides: `README-DEPLOY.md` (systemd/host) and `SETUP-DOMAIN.md` (DNS/HTTPS).
+- Current production is artifact-based and needs no git clone or Go on the server.
+  `.github/workflows/deploy-backend.yml` runs `deploy/package.sh`, publishes a GitHub
+  Release (`gameport-backend-linux-amd64.tar.gz`, `SHA256SUMS`, `version.txt`), and
+  `deploy/autodeploy.sh` on the VPS polls `releases/latest/download/version.txt` every
+  two minutes. It only packages the backend, admin static, seed, and deploy scripts —
+  the public frontend stays on Vercel.
+- `deploy/deploy.sh <artifact-dir>` installs the artifact into
+  `/opt/data/workspace/deployed/game-port`, preserves `.env` and `uploads/`, restarts the
+  supervisor, applies `seed.sql`, runs health/admin/API checks, and rolls back on failure.
+  `deploy/manager.sh` still runs inside the Hermes container (Postgres over a unix socket,
+  app on `0.0.0.0:8181`). `deploy/package.sh` is the only script that needs Go.
+- `.env` lives only on the server, is never in Git or a release artifact, and is not
+  touched by `deploy.sh`. `manager.sh` sources it; values containing `&` or `?` must be
+  quoted there. Change `.env` then `manager.sh restart`. `PUBLIC_BASE_URL` must be the API
+  origin (`https://api.gameport.web.id`), not the Vercel apex.
+- Caddy variants: `Caddyfile.domain` is the current `api.` + `vps.` setup (apex and `www`
+  are Vercel; it hardcodes container IP `172.18.0.3`), `Caddyfile` is a single-domain
+  template, `Caddyfile.ip` serves raw HTTP on `:80`. Never add an apex/`www` block while
+  its DNS points to Vercel, and never use a bare IP as a Caddy site address — Caddy forces
+  HTTPS with a 308.
+- `systemctl reload` does not reread `.env` (use `restart`), and a running binary cannot be
+  overwritten. Caddy config is installed manually on the host; `deploy.sh` only refreshes
+  the copy in the deployed folder.
+- Deploy guide: `deploy/README.md`. Older host/systemd notes live in `README-DEPLOY.md`;
+  DNS/HTTPS notes in `SETUP-DOMAIN.md`.
 
 ## Style
 

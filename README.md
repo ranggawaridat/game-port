@@ -52,26 +52,27 @@ Tidak ada Node.js, tidak ada bundler, tidak ada dependency frontend.
 ## Struktur
 
 ```
-cmd/server/main.go          entrypoint + graceful shutdown
-internal/
-  config/config.go          env, escape kredensial DSN
-  db/
-    db.go                   pool pgx + health check
-    models.go               tipe JSON
-    queries.go              SQL: filter, paginasi, mutasi, analitik
-  api/
-    server.go               router publik, static, CORS
-    admin.go                CRUD admin, upload, statistik
-    auth.go                 sesi cookie, verifikasi password
-static/
-  index.html  app.js  style.css      frontend publik
-  admin.html  admin.js  admin.css    panel admin
-db/seed.sql                 skema + data referensi (idempoten)
-deploy/manager.sh           kelola PostgreSQL + app di container
-docs/screenshot.png         tangkapan layar
-Caddyfile.domain            reverse proxy + HTTPS otomatis (domain)
+backend/
+  cmd/server/main.go        entrypoint + graceful shutdown
+  internal/
+    config/config.go        env, escape kredensial DSN
+    db/                     pool pgx, model, query
+    api/                    router publik, admin, static, CORS
+  db/seed.sql               skema + data referensi (idempoten)
+frontend/                   situs publik (Vercel) + admin static
+  index.html  app.js  style.css
+  admin.html  admin.js  admin.css
+  vercel.json
+deploy/
+  package.sh                build artifact backend (CI)
+  autodeploy.sh             poll GitHub Release di VPS
+  deploy.sh                 pasang artifact + rollback
+  manager.sh                PostgreSQL + app di container
+.github/workflows/deploy-backend.yml
+docs/screenshot.png
+Caddyfile.domain            reverse proxy api. + vps. (apex/www di Vercel)
 Caddyfile.ip                reverse proxy untuk akses lewat IP mentah
-gameport.service            unit systemd
+gameport.service            unit systemd (cara lama, host)
 docker-compose.yml          db + backend
 Dockerfile                  multi-stage build
 ```
@@ -94,39 +95,54 @@ Buka <http://127.0.0.1:8181>. Panel admin di `ADMIN_PATH`
 
 ## Deploy
 
-Ada dua cara, pilih sesuai kondisi VPS.
+Arsitektur produksi saat ini:
 
-| | A: systemd di host | B: di dalam container |
-|---|---|---|
-| App jalan di | host (`/srv/gameport`) | container |
-| Database | PostgreSQL host | PostgreSQL container (unix socket) |
-| Caddy meneruskan ke | `127.0.0.1:8181` | `172.18.0.3:8181` |
-| Butuh user sistem | ya | tidak |
-| Cocok untuk | VPS khusus GamePort | satu VPS untuk app + agen |
-
-Panduan lengkap tiap cara:
-
-- **A** → [README-DEPLOY.md](README-DEPLOY.md)
-- **Domain + HTTPS** → [SETUP-DOMAIN.md](SETUP-DOMAIN.md)
-
-**Cara B** singkat:
-
-```bash
-docker exec -u hermes alpha-hermes /opt/data/gameport/manager.sh start
+```
+gameport.web.id      → Vercel (frontend statis, root directory frontend/)
+api.gameport.web.id  → VPS (API Go, safelink, /uploads)
+vps.gameport.web.id  → VPS (panel admin)
 ```
 
-`deploy/manager.sh` mengurus PostgreSQL + GamePort sekaligus:
-`start` · `stop` · `restart` · `status` · `logs`.
+Backend memakai **artifact + auto-deploy**, tanpa git clone dan tanpa Go di
+server:
 
-### Memilih Caddyfile
+1. Push ke `main` → GitHub Actions menjalankan `deploy/package.sh`.
+2. Workflow menerbitkan GitHub Release (`latest`) berisi binary, seed, admin
+   static, dan script deploy.
+3. Timer di VPS mengecek release tiap ±2 menit, mengunduh, memverifikasi
+   checksum, lalu menjalankan `deploy/deploy.sh`.
+4. `deploy.sh` memasang binary/admin, migrasi skema, tes health/API/admin, dan
+   rollback otomatis kalau gagal.
 
-| Akses | File | Site address |
-|---|---|---|
-| Domain + HTTPS | `Caddyfile.domain` | `gameport.web.id` |
-| IP mentah, HTTP saja | `Caddyfile.ip` | `:80` |
+`.env` dan `uploads/` tetap di server dan tidak pernah ikut artifact.
+
+Panduan lengkap: **[deploy/README.md](deploy/README.md)**.
+
+Perintah cepat:
 
 ```bash
-sudo cp Caddyfile.domain /etc/caddy/Caddyfile
+# deploy manual, tanpa menunggu timer
+docker exec -u hermes alpha-hermes \
+  /opt/data/workspace/deployed/game-port/deploy/autodeploy.sh
+
+# status PostgreSQL + aplikasi
+docker exec -u hermes alpha-hermes /opt/data/gameport/manager.sh status
+```
+
+Catatan lama:
+
+- `README-DEPLOY.md` — cara lama: binary + systemd di host.
+- `SETUP-DOMAIN.md` — DNS/HTTPS; sebagian masih menjelaskan setup monolitik.
+
+### Caddy
+
+`Caddyfile.domain` sekarang hanya berisi blok `api.` dan `vps.`. Apex dan `www`
+ditangani Vercel — jangan menambahkan blok apex/www selama DNS-nya menunjuk
+Vercel.
+
+```bash
+sudo cp /opt/alpha/hermes/workspace/deployed/game-port/Caddyfile.domain \
+        /etc/caddy/Caddyfile
 sudo caddy validate --config /etc/caddy/Caddyfile
 sudo systemctl reload caddy
 ```
@@ -139,19 +155,22 @@ sudo systemctl reload caddy
 
 ## API publik
 
+Base: **`https://api.gameport.web.id`**. Path saat ini memakai `/api/v1/...`;
+`/api/...` tetap tersedia sebagai alias migrasi.
+
 | Endpoint | Keterangan |
 |---|---|
-| `GET /api/health` | status koneksi DB + pool |
-| `GET /api/statistik` | agregat katalog |
-| `GET /api/kategori` | kategori + jumlah |
-| `GET /api/status` | status kematangan + jumlah |
-| `GET /api/platform` | platform + jumlah |
-| `GET /api/genre` | genre + jumlah |
-| `GET /api/ports` | daftar port (filter, sort, paginasi) |
-| `GET /api/ports/{slug}` | detail + 6 port terkait |
-| `GET /api/ports/{slug}/download` | catat unduhan, lalu redirect |
+| `GET /api/v1/health` | status koneksi DB + pool |
+| `GET /api/v1/statistik` | agregat katalog |
+| `GET /api/v1/kategori` | kategori + jumlah |
+| `GET /api/v1/status` | status kematangan + jumlah |
+| `GET /api/v1/platform` | platform + jumlah |
+| `GET /api/v1/genre` | genre + jumlah |
+| `GET /api/v1/ports` | daftar port (filter, sort, paginasi) |
+| `GET /api/v1/ports/{slug}` | detail + 6 port terkait |
+| `GET /api/v1/ports/{slug}/download` | catat unduhan, lalu redirect |
 
-Parameter `/api/ports`:
+Parameter `/api/v1/ports`:
 
 - `q` — cari di nama, deskripsi, author
 - `kategori`, `genre`, `platform` — filter slug
@@ -160,15 +179,16 @@ Parameter `/api/ports`:
 - `limit` 1–200 (default 24), `offset`
 
 ```bash
-curl 'https://gameport.web.id/api/ports?q=half-life'
-curl 'https://gameport.web.id/api/ports?genre=shooter&sort=populer'
+curl 'https://api.gameport.web.id/api/v1/ports?q=half-life'
+curl 'https://api.gameport.web.id/api/v1/ports?genre=shooter&sort=populer'
 ```
 
 ---
 
 ## API admin
 
-Semua di bawah `ADMIN_PATH`. Butuh sesi cookie.
+Panel admin dilayani di **`https://vps.gameport.web.id`**. Semua endpoint di
+bawah `ADMIN_PATH` (path rahasia di `.env`). Butuh sesi cookie.
 
 | Endpoint | Keterangan |
 |---|---|

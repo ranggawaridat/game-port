@@ -1,5 +1,11 @@
 # Setup Domain — gameport.web.id
 
+> **Arsitektur saat ini:** apex `gameport.web.id` dan `www` dilayani Vercel.
+> Hanya `api.gameport.web.id` dan `vps.gameport.web.id` yang mengarah ke VPS
+> dan punya site block di `Caddyfile.domain`. Tabel DNS di bawah adalah setup
+> lama (frontend monolitik di VPS) — jangan dipakai apa adanya untuk apex.
+> Lihat **[deploy/README.md](deploy/README.md)** untuk alur deploy sekarang.
+
 Panduan dari domain kosong sampai HTTPS aktif.
 
 ```
