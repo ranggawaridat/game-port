@@ -9,7 +9,7 @@
 # sudah mengarah ke IP server ini dan port 80/443 terbuka.
 # =============================================================================
 
-gameport.example.com {
+gameport.web.id {
     encode zstd gzip
 
     # Batasi ukuran upload gambar (5 MB + margin)
@@ -26,7 +26,7 @@ gameport.example.com {
     }
 
     # Panel admin: jangan diindeks mesin pencari
-    @admin path /panel-x7k2*
+    @admin path /admin*
     header @admin X-Robots-Tag "noindex, nofollow, noarchive"
 
     reverse_proxy 127.0.0.1:8181 {
