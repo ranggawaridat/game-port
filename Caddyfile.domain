@@ -11,9 +11,9 @@
 #                                                                    ▼
 #                                              backend Go (container, :8181)
 #
-# IP container backend: 172.18.0.3 (bisa berubah setelah recreate container:
-#   docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' alpha-hermes
-# )
+# Target proxy: 127.0.0.1:8181 — port backend yang dipublish docker compose
+# di host (lihat docker-compose.yml, APP_BIND). Stabil walau container
+# di-recreate; IP container tidak dipakai lagi.
 #
 # ---------------------------------------------------------------------------
 # DNS
@@ -57,7 +57,7 @@ api.gameport.web.id {
 	# Pastikan .env berisi:
 	#   CORS_ORIGINS=https://gameport.web.id,https://www.gameport.web.id,https://vps.gameport.web.id
 
-	reverse_proxy 172.18.0.3:8181 {
+	reverse_proxy 127.0.0.1:8181 {
 		header_up X-Forwarded-Proto {scheme}
 		header_up X-Real-IP {remote_host}
 		transport http {
@@ -97,7 +97,7 @@ vps.gameport.web.id {
 		-Server
 	}
 
-	reverse_proxy 172.18.0.3:8181 {
+	reverse_proxy 127.0.0.1:8181 {
 		header_up X-Forwarded-Proto {scheme}
 		header_up X-Real-IP {remote_host}
 		transport http {

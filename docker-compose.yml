@@ -49,7 +49,15 @@ services:
       APP_PORT: "8181"
       CORS_ORIGINS: ${CORS_ORIGINS:-*}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD di .env}
-      ADMIN_PATH: ${ADMIN_PATH:-/panel-x7k2}
+      ADMIN_PATH: ${ADMIN_PATH:-/admin}
+      # Opsional: hash SHA-256 sebagai ganti plaintext di .env
+      ADMIN_SESSION_KEY: ${ADMIN_SESSION_KEY:-}
+      # Link gambar absolut dari origin api (frontend ada di Vercel)
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+      # Gerbang iklan sebelum unduhan (script iklannya di tabel settings DB)
+      SAFELINK_ENABLED: ${SAFELINK_ENABLED:-false}
+      SAFELINK_WAIT: ${SAFELINK_WAIT:-10}
+      SAFELINK_TTL: ${SAFELINK_TTL:-300}
     ports:
       # Bind ke localhost; pasang Caddy/nginx untuk publik
       - "${APP_BIND:-127.0.0.1}:${APP_PORT:-8181}:8181"
@@ -71,3 +79,7 @@ volumes:
 networks:
   gameport:
     name: alpha
+    # Network "alpha" sudah dibuat oleh deployment Hermes — compose
+    # hanya ikut, bukan membuat. Tanpa external: true, docker compose
+    # menolak karena label network tidak cocok.
+    external: true
