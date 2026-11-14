@@ -536,6 +536,28 @@ func (s *Store) PortPopuler(ctx context.Context, limit int) ([]PortPopuler, erro
 	return out, rows.Err()
 }
 
+// SitemapEntries mengembalikan slug + waktu ubah seluruh port terbit.
+// Dipakai /sitemap.xml agar crawler tahu halaman mana yang perlu dipindai ulang.
+func (s *Store) SitemapEntries(ctx context.Context) ([]SitemapEntry, error) {
+	rows, err := s.Pool.Query(ctx, `
+		SELECT slug, updated_at FROM ports
+		WHERE published ORDER BY updated_at DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := []SitemapEntry{}
+	for rows.Next() {
+		var e SitemapEntry
+		if err := rows.Scan(&e.Slug, &e.UpdatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}
+
 // PencarianTeratas mengembalikan query terbanyak.
 func (s *Store) PencarianTeratas(ctx context.Context, limit int) ([]PencarianTeratas, error) {
 	rows, err := s.Pool.Query(ctx, `

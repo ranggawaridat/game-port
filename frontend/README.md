@@ -17,8 +17,14 @@ baru masuk `CORS_ORIGINS` di `.env` backend.
 
 ## Jalur yang sengaja tetap relative
 
-`/port/{slug}` adalah **route frontend** (Vercel rewrite → `index.html`),
-bukan API — lihat `vercel.json`.
+`/port/{slug}`, `/genre/{slug}`, `/platform/{slug}`, dan `/kategori/{slug}`
+adalah **route frontend** (Vercel rewrite → `index.html`), bukan API — lihat
+`vercel.json`. Metadata tiap halaman (title, description, canonical, Open
+Graph, JSON-LD) diisi `app.js` setelah data API tiba.
+
+`/sitemap.xml` di-rewrite ke backend (`api.gameport.web.id/sitemap.xml`) agar
+isinya selalu mengikuti database. `robots.txt` statis menunjuk ke sana.
+Gambar pratinjau sosial default: `og-default.png` (1200×630).
 
 `/admin/api/*` tidak ada di sini: `admin.js` memakai path relative karena
 panel admin dilayani dari `vps.gameport.web.id` yang di-proxy ke backend —
@@ -30,8 +36,9 @@ satu origin, jadi cookie sesi tetap bekerja tanpa CORS.
 2. Framework Preset: **Other** (statis murni, tanpa build)
 3. Pastikan DNS: record `A`/`CNAME` `gameport.web.id` menunjuk ke Vercel
 
-`vercel.json` sudah berisi rewrite `/port/* → index.html` supaya halaman
-detail bisa dibagikan sebagai URL langsung.
+`vercel.json` sudah berisi rewrite `/port/*`, `/genre/*`, `/platform/*`, dan
+`/kategori/*` → `index.html` supaya halaman detail dan landing page bisa
+dibagikan sebagai URL langsung, plus rewrite `/sitemap.xml` ke backend.
 
 ## Catatan
 

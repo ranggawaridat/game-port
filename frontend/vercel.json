@@ -1,14 +1,31 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
-    { "source": "/port/:slug*", "destination": "/index.html" }
+    { "source": "/sitemap.xml", "destination": "https://api.gameport.web.id/sitemap.xml" },
+    { "source": "/port/:slug*", "destination": "/index.html" },
+    { "source": "/genre/:slug", "destination": "/index.html" },
+    { "source": "/platform/:slug", "destination": "/index.html" },
+    { "source": "/kategori/:slug", "destination": "/index.html" }
   ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
         { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "X-DNS-Prefetch-Control", "value": "on" }
+      ]
+    },
+    {
+      "source": "/og-default.png",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=604800" }
+      ]
+    },
+    {
+      "source": "/favicon.svg",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=604800" }
       ]
     }
   ]

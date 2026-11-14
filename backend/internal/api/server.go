@@ -72,6 +72,9 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /dl/{slug}/{kind}", s.handleSafeLinkPage)
 	mux.HandleFunc("POST /dl/{slug}/{kind}/mint", s.handleSafeLinkMint)
 
+	// SEO: sitemap dinamis. Vercel meneruskan /sitemap.xml ke rute ini.
+	mux.HandleFunc("GET /sitemap.xml", s.handleSitemap)
+
 	// ---------- Admin (path rahasia, tidak ditautkan dari publik) ----------
 	ap := s.cfg.AdminPath
 	mux.HandleFunc("GET "+ap, s.handleAdminPage)

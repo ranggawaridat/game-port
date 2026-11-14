@@ -203,3 +203,81 @@ footer{border-top:1px solid var(--line);padding:34px 0;font-size:12.5px;color:va
   .detail-top{grid-template-columns:1fr;gap:20px}
   .detail-actions .btn{flex:1 1 auto;align-items:center}
 }
+
+/* ══════════ aksesibilitas & tautan kartu ══════════ */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.card .lnk{position:relative;z-index:2}
+a.tag.lnk{text-decoration:none;transition:.15s}
+a.tag.lnk:hover{color:var(--accent-2);border-color:rgba(124,92,255,.4)}
+.cat a{color:inherit;text-decoration:none}
+.cat a:hover{color:var(--accent-2)}
+
+/* ══════════ landing page genre / platform / kategori ══════════ */
+.landing{padding:0 0 70px}
+.landing-head{padding:30px 0 0}
+.landing-head h1{font-size:clamp(28px,4.6vw,44px);max-width:26ch;
+  letter-spacing:-.035em;line-height:1.08;font-weight:800}
+.landing-head .lede{margin-top:16px;font-size:15px;max-width:74ch;color:var(--fg-2)}
+.landing .meta{padding:22px 0 20px;margin-bottom:0}
+.landing-links{margin-top:50px;padding-top:26px;border-top:1px solid var(--line)}
+.landing-links h2{font-size:15px;font-weight:600;margin-bottom:14px}
+.link-cloud{display:flex;flex-wrap:wrap;gap:8px}
+.cloud-link{font-family:var(--mono);font-size:11.5px;padding:6px 12px;border-radius:99px;
+  border:1px solid var(--line-2);background:var(--bg-2);color:var(--fg-2);
+  text-decoration:none;transition:.15s}
+.cloud-link span{opacity:.5;margin-left:6px}
+.cloud-link:hover{border-color:var(--fg-3);color:var(--fg)}
+.cloud-link.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.back-all{margin-top:26px;font-size:13px}
+.back-all a{color:var(--accent-2);text-decoration:none}
+.back-all a:hover{text-decoration:underline}
+
+/* ══════════ blok konten SEO di beranda ══════════ */
+.seo-block{padding:64px 0 72px;border-top:1px solid var(--line)}
+.seo-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(250px,1fr);gap:48px}
+.seo-block h2{font-size:clamp(19px,2.4vw,25px);letter-spacing:-.025em;font-weight:700}
+.seo-block p{margin-top:12px;font-size:14px;color:var(--fg-2);line-height:1.78;max-width:76ch}
+.seo-block p em{font-style:normal;color:var(--fg)}
+.seo-box{background:var(--bg-2);border:1px solid var(--line);border-radius:13px;
+  padding:22px;align-self:start}
+.seo-box h3{font-family:var(--mono);font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--fg-3);font-weight:500;margin-bottom:14px}
+.link-list{list-style:none;display:flex;flex-direction:column;gap:9px;font-size:13px}
+.link-list a{color:var(--fg-2);text-decoration:none;transition:.15s}
+.link-list a:hover{color:var(--accent-2)}
+.faq-title{margin-top:52px}
+.faq{border-top:1px solid var(--line);padding:14px 0}
+.faq summary{cursor:pointer;font-size:14px;font-weight:600}
+.faq summary:hover{color:var(--accent-2)}
+.faq p{margin-top:10px;font-size:13.5px;color:var(--fg-2);line-height:1.7}
+.noscript-note{padding:18px 0;font-size:12px;color:var(--fg-3)}
+
+/* ══════════ tautan internal di footer ══════════ */
+.foot-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:30px;
+  margin-top:30px;padding-top:26px;border-top:1px solid var(--line)}
+.foot-nav h2{font-family:var(--mono);font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--fg-3);font-weight:500;margin-bottom:11px}
+.foot-nav ul{list-style:none;display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px}
+.foot-nav a{color:var(--fg-2);text-decoration:none;transition:.15s}
+.foot-nav a:hover{color:var(--fg)}
+
+/* ══════════ tombol bagikan ══════════ */
+.share{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-top:8px}
+.share-label{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--fg-3);margin-right:3px}
+.share a,.share button{font-family:var(--mono);font-size:10.5px;color:var(--fg-2);
+  text-decoration:none;border:1px solid var(--line-2);background:var(--bg-2);
+  border-radius:99px;padding:5px 11px;cursor:pointer;transition:.15s;font-weight:400}
+.share a:hover,.share button:hover{border-color:var(--accent);color:#fff}
+
+@media(max-width:900px){
+  .seo-grid{grid-template-columns:1fr;gap:30px}
+  .foot-nav{grid-template-columns:1fr 1fr}
+}
+@media(max-width:640px){
+  .seo-block{padding:44px 0 52px}
+  .foot-nav{grid-template-columns:1fr}
+  .landing-head h1{font-size:clamp(25px,7vw,34px)}
+}
+

@@ -4,12 +4,63 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GamePort — Port Native Android dari Game PC &amp; Konsol</title>
-<meta name="description" content="Katalog port native Android dari game PC dan konsol: source port, dekompilasi, dan rekompilasi statis.">
-<meta name="robots" content="index, follow">
+<meta name="description" content="Katalog port native Android dari game PC dan konsol: source port, dekompilasi, dan rekompilasi statis. Unduh APK dan mainkan tanpa emulator.">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<link rel="canonical" href="https://gameport.web.id/">
+<meta name="theme-color" content="#0a0a0b">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/og-default.png">
+
+<!-- Open Graph / kartu pratinjau saat dibagikan -->
+<meta property="og:site_name" content="GamePort">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="id_ID">
+<meta property="og:title" content="GamePort — Port Native Android dari Game PC &amp; Konsol">
+<meta property="og:description" content="Katalog port native Android dari game PC dan konsol: source port, dekompilasi, dan rekompilasi statis. Unduh APK dan mainkan tanpa emulator.">
+<meta property="og:url" content="https://gameport.web.id/">
+<meta property="og:image" content="https://gameport.web.id/og-default.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="GamePort — katalog port native Android">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="GamePort — Port Native Android dari Game PC &amp; Konsol">
+<meta name="twitter:description" content="Katalog port native Android dari game PC dan konsol. Unduh APK dan mainkan tanpa emulator.">
+<meta name="twitter:image" content="https://gameport.web.id/og-default.png">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://api.gameport.web.id" crossorigin>
+<link rel="dns-prefetch" href="https://api.gameport.web.id">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/style.css?v=6">
+<link rel="stylesheet" href="/style.css?v=7">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://gameport.web.id/#website",
+      "url": "https://gameport.web.id/",
+      "name": "GamePort",
+      "description": "Katalog port native Android dari game PC dan konsol: source port, dekompilasi, dan rekompilasi statis.",
+      "inLanguage": "id-ID",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": { "@type": "EntryPoint", "urlTemplate": "https://gameport.web.id/?q={search_term_string}" },
+        "query-input": "required name=search_term_string"
+      }
+    },
+    {
+      "@type": "Organization",
+      "@id": "https://gameport.web.id/#organisasi",
+      "name": "GamePort",
+      "url": "https://gameport.web.id/",
+      "logo": { "@type": "ImageObject", "url": "https://gameport.web.id/og-default.png" }
+    }
+  ]
+}
+</script>
 </head>
 <body>
 
@@ -17,8 +68,10 @@
   <div class="wrap nav">
     <a class="brand" href="/"><span class="dot"></span> GamePort</a>
     <nav class="nav-links">
-      <a href="#katalog">Katalog</a>
-      <a href="#tentang">Tentang</a>
+      <a href="/#katalog">Katalog</a>
+      <a href="/#tentang">Tentang</a>
+      <a href="/genre/action">Genre</a>
+      <a href="/platform/android">Platform</a>
     </nav>
     <div class="db-badge" id="dbBadge"><span class="pip"></span><span id="dbText">menghubungkan…</span></div>
   </div>
@@ -46,13 +99,17 @@
 <section class="wrap" id="katalog">
   <div class="controls">
     <div class="search">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
         <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
       </svg>
+      <label class="sr-only" for="q">Cari port game</label>
       <input id="q" type="search" placeholder="Cari game, deskripsi, atau author…" autocomplete="off">
     </div>
+    <label class="sr-only" for="genreSel">Filter genre</label>
     <select id="genreSel"><option value="">Semua genre</option></select>
+    <label class="sr-only" for="platformSel">Filter platform</label>
     <select id="platformSel"><option value="">Semua platform</option></select>
+    <label class="sr-only" for="sortSel">Urutkan</label>
     <select id="sortSel">
       <option value="terbaru">Urut: Terbaru</option>
       <option value="populer">Urut: Populer</option>
@@ -81,17 +138,146 @@
 
 </div><!-- /#homeView -->
 
+<section class="wrap landing" id="landingView" hidden>
+  <div id="landingContent"></div>
+</section>
+
 <section class="wrap" id="detailView" hidden>
   <div id="detailContent"></div>
 </section>
 
-<footer id="tentang">
-  <div class="wrap foot-row">
-    <div>Katalog port native Android. Semua port milik pembuat aslinya.</div>
-    <div class="mono" id="footInfo">—</div>
+<section class="wrap seo-block" id="tentang">
+  <div class="seo-grid">
+    <div>
+      <h2>Apa itu port native Android?</h2>
+      <p>
+        Port native adalah versi Android dari game PC atau konsol yang dibangun ulang dari kode
+        sumbernya — bukan dijalankan lewat emulator. Proyek seperti <em>source port</em> memakai
+        ulang engine asli (misalnya id Tech atau Build), sedangkan proyek <em>dekompilasi</em>
+        mengembalikan kode dari binary lalu menyusunnya ulang untuk arsitektur ARM.
+      </p>
+      <p>
+        Hasilnya: kontrol sentuh dan gamepad yang dapat disesuaikan untuk Android, tanpa emulasi
+        perangkat keras. Sebagian port tetap membutuhkan berkas data dari game asli yang Anda miliki.
+        Beberapa port bahkan menambahkan dukungan layar
+        lebar, penyimpanan cloud, dan mod. Karena itu GamePort mencatat status kematangan setiap
+        port — stabil, beta, eksperimental, atau alpha — beserta kebutuhan data game aslinya.
+      </p>
+      <p>
+        Katalog ini dikurasi manual. Setiap halaman port memuat deskripsi, cara instalasi,
+        kebutuhan penyimpanan, porter asal, dan tautan ke sumber resminya. Semua port tetap milik
+        pembuat aslinya.
+      </p>
+    </div>
+    <aside class="seo-box">
+      <h3>Jelajahi katalog</h3>
+      <ul class="link-list">
+        <li><a href="/genre/action">Port game Action</a></li>
+        <li><a href="/genre/rpg">Port game RPG</a></li>
+        <li><a href="/genre/shooter">Port game Shooter</a></li>
+        <li><a href="/genre/platformer">Port game Platformer</a></li>
+        <li><a href="/platform/android">Semua port Android</a></li>
+        <li><a href="/kategori/source-port">Source Port / reimplementasi engine</a></li>
+        <li><a href="/kategori/decompilation">Port berbasis dekompilasi</a></li>
+        <li><a href="/kategori/n64-recomp">Rekompilasi N64</a></li>
+      </ul>
+    </aside>
+  </div>
+
+  <h2 class="faq-title">Pertanyaan umum</h2>
+  <details class="faq">
+    <summary>Apakah port native butuh emulator?</summary>
+    <p>Tidak. Port native menjalankan kode game yang sudah dikompilasi untuk Android, jadi tidak
+      ada emulasi perangkat keras. Namun, sebagian port membutuhkan berkas data atau ROM dari
+      game asli; kebutuhan tersebut dicantumkan di halaman masing-masing.</p>
+  </details>
+  <details class="faq">
+    <summary>Apa arti status Stabil, Beta, dan Alpha?</summary>
+    <p>Stabil berarti fitur utama dan penyimpanan sudah berjalan baik. Beta masih punya bug
+      minor, eksperimental dan alpha bisa crash atau belum mendukung semua perangkat.</p>
+  </details>
+  <details class="faq">
+    <summary>Kenapa ada port yang membutuhkan data game asli?</summary>
+    <p>Sebagian port hanya berisi engine. Agar bisa dimainkan, Anda perlu menyalin berkas data
+      dari game yang Anda miliki sendiri ke folder yang ditentukan. Halaman port selalu
+      mencantumkan kebutuhan ini.</p>
+  </details>
+  <details class="faq">
+    <summary>Apakah unduhan aman?</summary>
+    <p>GamePort tidak mengemas ulang berkas. Tautan unduhan diarahkan ke halaman rilis porter
+      aslinya, dan setiap halaman port mencantumkan sumber yang bisa Anda periksa.</p>
+  </details>
+</section>
+
+<footer id="footer">
+  <div class="wrap">
+    <div class="foot-row">
+      <div>Katalog port native Android. Semua port milik pembuat aslinya.</div>
+      <div class="mono" id="footInfo">—</div>
+    </div>
+    <nav class="foot-nav" aria-label="Jelajahi katalog">
+      <div>
+        <h2>Genre</h2>
+        <ul>
+          <li><a href="/genre/action">Action</a></li>
+          <li><a href="/genre/adventure">Adventure</a></li>
+          <li><a href="/genre/rpg">RPG</a></li>
+          <li><a href="/genre/strategy">Strategy</a></li>
+          <li><a href="/genre/shooter">Shooter</a></li>
+          <li><a href="/genre/racing">Racing</a></li>
+          <li><a href="/genre/sports">Sports</a></li>
+          <li><a href="/genre/simulation">Simulation</a></li>
+          <li><a href="/genre/puzzle">Puzzle</a></li>
+          <li><a href="/genre/platformer">Platformer</a></li>
+          <li><a href="/genre/fighting">Fighting</a></li>
+          <li><a href="/genre/horror">Horror</a></li>
+          <li><a href="/genre/sandbox">Sandbox</a></li>
+          <li><a href="/genre/roguelike">Roguelike</a></li>
+          <li><a href="/genre/rhythm">Rhythm</a></li>
+          <li><a href="/genre/card">Card</a></li>
+          <li><a href="/genre/board">Board</a></li>
+          <li><a href="/genre/mmo">MMO</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2>Platform</h2>
+        <ul>
+          <li><a href="/platform/android">Android</a></li>
+          <li><a href="/platform/windows">Windows</a></li>
+          <li><a href="/platform/linux">Linux</a></li>
+          <li><a href="/platform/macos">macOS</a></li>
+          <li><a href="/platform/ios">iOS</a></li>
+          <li><a href="/platform/steam-deck">Steam Deck</a></li>
+          <li><a href="/platform/web">Web</a></li>
+          <li><a href="/platform/quest">Meta Quest</a></li>
+          <li><a href="/platform/switch">Switch</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2>Kategori port</h2>
+        <ul>
+          <li><a href="/kategori/source-port">Source Port / Engine</a></li>
+          <li><a href="/kategori/decompilation">Dekompilasi</a></li>
+          <li><a href="/kategori/n64-recomp">N64 Recompiled</a></li>
+          <li><a href="/kategori/nintendo-recomp">Rekompilasi Nintendo</a></li>
+          <li><a href="/kategori/xbox360-recomp">Rekompilasi Xbox 360</a></li>
+          <li><a href="/kategori/xbox-ps-psp-pc">Xbox / PlayStation / PSP / PC</a></li>
+          <li><a href="/kategori/handheld-16bit">Handheld &amp; 16-Bit</a></li>
+          <li><a href="/kategori/runtime-launcher">Runtime &amp; Launcher</a></li>
+          <li><a href="/kategori/classic">Port Klasik</a></li>
+        </ul>
+      </div>
+    </nav>
   </div>
 </footer>
 
-<script src="/app.js?v=6"></script>
+<noscript>
+  <div class="wrap noscript-note">
+    Katalog interaktif membutuhkan JavaScript. Anda tetap bisa membuka daftar port lewat tautan
+    genre, platform, dan kategori di bagian bawah halaman.
+  </div>
+</noscript>
+
+<script src="/app.js?v=7"></script>
 </body>
 </html>

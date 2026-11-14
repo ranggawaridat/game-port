@@ -1,0 +1,13 @@
+# GamePort — katalog port native Android
+# Sitemap dibangkitkan backend dari database, lalu diteruskan Vercel di /sitemap.xml
+User-agent: *
+Allow: /
+
+# Bot sosial butuh akses ke gambar pratinjau
+User-agent: Twitterbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+Sitemap: https://gameport.web.id/sitemap.xml

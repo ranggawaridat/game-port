@@ -161,3 +161,9 @@ type PencarianTeratas struct {
 	Query  string `json:"query"`
 	Jumlah int64  `json:"jumlah"`
 }
+
+// SitemapEntry adalah baris ringkas untuk sitemap.xml.
+type SitemapEntry struct {
+	Slug      string    `json:"slug"`
+	UpdatedAt time.Time `json:"updated_at"`
+}

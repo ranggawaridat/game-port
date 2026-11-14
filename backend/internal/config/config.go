@@ -22,6 +22,9 @@ type Config struct {
 	WriteTimeout time.Duration
 	StaticDir    string
 	UploadDir    string
+	// PublicURL adalah origin situs publik (Vercel). Dipakai untuk URL absolut
+	// di sitemap.xml dan metadata SEO lain.
+	PublicURL string
 
 	// Admin
 	AdminPath         string // path rahasia, mis. /panel-x7k2
@@ -93,6 +96,7 @@ func Load() (*Config, error) {
 		WriteTimeout:      durOr("HTTP_WRITE_TIMEOUT", 60*time.Second),
 		StaticDir:         envOr("STATIC_DIR", "static"),
 		UploadDir:         envOr("UPLOAD_DIR", "uploads"),
+		PublicURL:         strings.TrimRight(envOr("PUBLIC_URL", "https://gameport.web.id"), "/"),
 		AdminPath:         adminPath,
 		AdminPasswordHash: pwHash,
 		AdminSessionKey:   envOr("ADMIN_SESSION_KEY", ""),
