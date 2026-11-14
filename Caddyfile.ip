@@ -1,5 +1,7 @@
 # =============================================================================
-# Caddyfile — GamePort tanpa domain (akses lewat IP publik)
+# Caddyfile — template lama: GamePort tanpa domain (akses lewat IP publik)
+#
+# Untuk produksi sekarang (frontend di Vercel), gunakan Caddyfile.domain.
 #
 # Arsitektur:
 #   Internet → Caddy (host :80) → 172.18.0.3:8181 (container) → GamePort

@@ -1,5 +1,8 @@
 # =============================================================================
-# Caddyfile — publish GamePort
+# Caddyfile — template lama: satu domain, frontend + backend di VPS
+#
+# Untuk produksi sekarang (frontend di Vercel, hanya api. + vps. di VPS),
+# gunakan Caddyfile.domain.
 #
 # Ganti gameport.example.com dengan domainmu, lalu:
 #   sudo cp Caddyfile /etc/caddy/Caddyfile
