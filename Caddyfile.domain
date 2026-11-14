@@ -2,7 +2,7 @@
 # Caddyfile — GamePort backend
 #
 #   gameport.web.id        frontend statis di Vercel (bukan Caddy)
-#   api.gameport.web.id    backend Go di VPS   (API ber-version, safelink, uploads)
+#   api.gameport.web.id    backend Go di VPS   (API ber-version, safelink)
 #   vps.gameport.web.id    panel admin        (login kamu)
 #
 # Arsitektur:
@@ -39,9 +39,9 @@
 api.gameport.web.id {
 	encode zstd gzip
 
-	# Unduhan bisa besar (ISO 6 GB) dan unggahan sampul hingga 5 MB
+	# Payload POST kecil (mint safelink). Unduhan adalah respons, bukan body.
 	request_body {
-		max_size 8MB
+		max_size 2MB
 	}
 
 	header {
@@ -83,9 +83,9 @@ api.gameport.web.id {
 vps.gameport.web.id {
 	encode zstd gzip
 
-	# Unggahan sampul admin (backend membatasi 5 MB)
+	# Payload admin berupa JSON (backend membatasi 1 MB).
 	request_body {
-		max_size 8MB
+		max_size 2MB
 	}
 
 	header {

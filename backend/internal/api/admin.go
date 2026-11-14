@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -289,93 +288,4 @@ func (s *Server) handleAdminDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.writeJSON(w, http.StatusOK, map[string]any{"ok": true})
-}
-
-// ---------- Upload gambar ----------
-
-const maxUploadBytes = 5 << 20 // 5 MB
-
-var allowedImageExt = map[string]bool{
-	".jpg": true, ".jpeg": true, ".png": true, ".webp": true, ".gif": true, ".avif": true,
-}
-
-// handleAdminUpload menerima multipart "file" dan menyimpannya ke UploadDir.
-func (s *Server) handleAdminUpload(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, maxUploadBytes+512*1024)
-	if err := r.ParseMultipartForm(maxUploadBytes); err != nil {
-		s.writeErr(w, http.StatusBadRequest, "berkas terlalu besar atau format salah (maks 5 MB)")
-		return
-	}
-	f, hdr, err := r.FormFile("file")
-	if err != nil {
-		s.writeErr(w, http.StatusBadRequest, "field 'file' wajib diisi")
-		return
-	}
-	defer f.Close()
-
-	ext := strings.ToLower(filepath.Ext(hdr.Filename))
-	if !allowedImageExt[ext] {
-		s.writeErr(w, http.StatusBadRequest, "hanya gambar: jpg, png, webp, gif, avif")
-		return
-	}
-	if !validImageHeader(f) {
-		s.writeErr(w, http.StatusBadRequest, "isi berkas bukan gambar yang valid")
-		return
-	}
-
-	name := fmt.Sprintf("%d-%s%s", time.Now().UnixNano(), randToken(6), ext)
-	if err := os.MkdirAll(s.cfg.UploadDir, 0o755); err != nil {
-		s.writeErr(w, http.StatusInternalServerError, "gagal membuat folder unggahan")
-		return
-	}
-	dst := filepath.Join(s.cfg.UploadDir, name)
-	out, err := os.Create(dst)
-	if err != nil {
-		s.writeErr(w, http.StatusInternalServerError, "gagal menyimpan berkas")
-		return
-	}
-	defer out.Close()
-	if _, err := io.Copy(out, io.LimitReader(f, maxUploadBytes)); err != nil {
-		os.Remove(dst)
-		s.writeErr(w, http.StatusInternalServerError, "gagal menulis berkas")
-		return
-	}
-
-	url := "/uploads/" + name
-	if s.cfg.PublicBaseURL != "" {
-		url = s.cfg.PublicBaseURL + url
-	}
-	s.writeJSON(w, http.StatusOK, map[string]any{
-		"ok": true, "url": url, "nama": name, "ukuran": hdr.Size,
-	})
-}
-
-// validImageHeader memeriksa magic bytes.
-func validImageHeader(f multipart.File) bool {
-	head := make([]byte, 12)
-	n, err := f.Read(head)
-	if err != nil && n == 0 {
-		return false
-	}
-	// kembalikan posisi baca
-	if _, err := f.Seek(0, io.SeekStart); err != nil {
-		return false
-	}
-	if n >= 3 && head[0] == 0xFF && head[1] == 0xD8 && head[2] == 0xFF {
-		return true // jpeg
-	}
-	if n >= 8 && string(head[0:8]) == "\x89PNG\r\n\x1a\n" {
-		return true // png
-	}
-	if n >= 6 && (string(head[0:6]) == "GIF87a" || string(head[0:6]) == "GIF89a") {
-		return true // gif
-	}
-	if n >= 12 && string(head[0:4]) == "RIFF" && string(head[8:12]) == "WEBP" {
-		return true // webp
-	}
-	if n >= 12 && string(head[4:8]) == "ftyp" &&
-		(string(head[8:12]) == "avif" || string(head[8:12]) == "avis") {
-		return true // avif
-	}
-	return false
 }

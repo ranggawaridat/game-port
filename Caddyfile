@@ -15,9 +15,9 @@
 gameport.web.id {
     encode zstd gzip
 
-    # Batasi ukuran upload gambar (5 MB + margin)
+    # Batasi ukuran payload admin (JSON, backend maks 1 MB)
     request_body {
-        max_size 8MB
+        max_size 2MB
     }
 
     # Header keamanan

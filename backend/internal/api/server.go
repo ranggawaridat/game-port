@@ -84,12 +84,12 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST "+ap+"/api/port", s.wajibAdmin(s.handleAdminCreate))
 	mux.HandleFunc("PUT "+ap+"/api/port/{id}", s.wajibAdmin(s.handleAdminUpdate))
 	mux.HandleFunc("DELETE "+ap+"/api/port/{id}", s.wajibAdmin(s.handleAdminDelete))
-	mux.HandleFunc("POST "+ap+"/api/upload", s.wajibAdmin(s.handleAdminUpload))
 	mux.HandleFunc("GET "+ap+"/api/settings", s.wajibAdmin(s.handleAdminGetSettings))
 	mux.HandleFunc("POST "+ap+"/api/settings", s.wajibAdmin(s.handleAdminSaveSettings))
 
 	// ---------- Static ----------
 	mux.HandleFunc("GET /", s.handleStatic)
+	// Gambar lama dari fitur unggah yang sudah dihapus. Read-only.
 	mux.HandleFunc("GET /uploads/{file}", s.handleUpload)
 
 	return s.middleware(mux)
@@ -398,7 +398,7 @@ func (s *Server) handleStatic(w http.ResponseWriter, r *http.Request) {
 	s.writeErr(w, http.StatusNotFound, "tidak ditemukan")
 }
 
-// handleUpload menyajikan berkas gambar hasil unggahan admin.
+// handleUpload menyajikan gambar lama dari fitur unggah yang sudah dihapus.
 func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	name := filepath.Base(r.PathValue("file"))
 	if name == "" || strings.Contains(name, "..") {

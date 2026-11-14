@@ -71,9 +71,6 @@ mkdir -p "$DEP" "$DEP/static" "$DEP/uploads"
 if ! grep -qE '^(export[[:space:]]+)?CORS_ORIGINS=' "$DEP/.env"; then
   warn "CORS_ORIGINS tidak diset — backend memakai wildcard"
 fi
-if grep -qE "^[[:space:]]*(export[[:space:]]+)?PUBLIC_BASE_URL=[\"']?https://(www\.)?gameport\.web\.id/?[\"']?[[:space:]]*$" "$DEP/.env"; then
-  warn "PUBLIC_BASE_URL menunjuk apex Vercel; sebaiknya https://api.gameport.web.id"
-fi
 
 VERSI=$(tr -d '[:space:]' < "$SRC/version.txt" 2>/dev/null || true)
 [ -n "$VERSI" ] || VERSI="unknown"

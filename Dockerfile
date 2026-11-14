@@ -25,6 +25,7 @@ WORKDIR /app
 COPY --from=build /out/server /app/gameport
 COPY frontend /app/static
 
+# Folder lama untuk gambar yang diunggah sebelum fitur upload dihapus.
 RUN mkdir -p /app/uploads && chown -R app:app /app
 
 USER app

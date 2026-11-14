@@ -16,8 +16,8 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&
 const API_ORIGIN = 'https://api.gameport.web.id';
 const API = `${API_ORIGIN}/api/v1`;
 
-/* Berkas dari backend (gambar sampul, dsb) ditulis relative di database.
-   Dari origin berbeda, harus diawali origin API. */
+/* Gambar sampul bisa URL eksternal (http/https) atau path lama /uploads/…
+   yang masih dilayani backend. Path relative harus diawali origin API. */
 const asetAPI = (u) => (u && u.startsWith('/') ? API_ORIGIN + u : u);
 
 const STATUS_STYLE = {

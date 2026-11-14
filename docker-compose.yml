@@ -54,7 +54,7 @@ services:
       # Bind ke localhost; pasang Caddy/nginx untuk publik
       - "${APP_BIND:-127.0.0.1}:${APP_PORT:-8181}:8181"
     volumes:
-      # Gambar unggahan tetap ada walau container di-recreate
+      # Gambar lama dari fitur unggah yang sudah dihapus (read-only)
       - ./uploads:/app/uploads
     networks: [gameport]
     healthcheck:

@@ -265,7 +265,6 @@ function kosongkanForm() {
   $('#f_id').value = '';
   $('#formTitle').textContent = 'Tambah Port';
   $('#preview').hidden = true;
-  $('#uploadMsg').textContent = '';
   $('#saveBtn').textContent = 'Simpan';
   document.querySelectorAll('#platformBox input').forEach(c => { c.checked = false; });
   $('#f_published').checked = true;
@@ -351,38 +350,7 @@ $('#portForm').addEventListener('submit', async (e) => {
 $('#resetForm').addEventListener('click', kosongkanForm);
 $('#cancelEdit').addEventListener('click', kosongkanForm);
 
-/* ---------------- upload gambar ---------------- */
-$('#pickFile').addEventListener('click', () => $('#fileInput').click());
-
-$('#fileInput').addEventListener('change', async (e) => {
-  const f = e.target.files && e.target.files[0];
-  if (!f) return;
-  if (f.size > 5 * 1024 * 1024) { toast('Gambar maksimal 5 MB', true); return; }
-
-  const msg = $('#uploadMsg');
-  msg.textContent = 'mengunggah…';
-  const fd = new FormData();
-  fd.append('file', f);
-  try {
-    const res = await fetch(BASE + '/api/upload', {
-      method: 'POST', credentials: 'same-origin', body: fd,
-    });
-    const data = await res.json().catch(() => ({}));
-    if (res.status === 401) { tampilLogin(); return; }
-    if (!res.ok) throw new Error(data.error || 'gagal mengunggah');
-    $('#f_image').value = data.url;
-    $('#previewImg').src = data.url;
-    $('#preview').hidden = false;
-    msg.textContent = 'berhasil diunggah';
-    toast('Gambar terunggah');
-  } catch (ex) {
-    msg.textContent = '';
-    toast(ex.message, true);
-  } finally {
-    e.target.value = '';
-  }
-});
-
+/* ---------------- pratinjau gambar dari URL ---------------- */
 $('#f_image').addEventListener('change', (e) => {
   const v = e.target.value.trim();
   if (v) { $('#previewImg').src = v; $('#preview').hidden = false; }

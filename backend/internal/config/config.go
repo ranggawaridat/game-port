@@ -28,9 +28,6 @@ type Config struct {
 	AdminPasswordHash string // sha256 hex dari password
 	AdminSessionKey   string
 
-	// URL publik (dipakai untuk membangun link gambar absolut bila perlu)
-	PublicBaseURL string
-
 	// SafeLink — gerbang iklan sebelum unduhan
 	SafeLinkEnabled bool
 	SafeLinkWait    int // detik tunggu di halaman gerbang
@@ -99,7 +96,6 @@ func Load() (*Config, error) {
 		AdminPath:         adminPath,
 		AdminPasswordHash: pwHash,
 		AdminSessionKey:   envOr("ADMIN_SESSION_KEY", ""),
-		PublicBaseURL:     strings.TrimRight(os.Getenv("PUBLIC_BASE_URL"), "/"),
 
 		SafeLinkEnabled: envOr("SAFELINK_ENABLED", "false") == "true",
 		SafeLinkWait:    intOr("SAFELINK_WAIT", 10),

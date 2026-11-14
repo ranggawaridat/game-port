@@ -155,9 +155,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .checks-row{display:flex;gap:20px;flex-wrap:wrap}
 .check{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--fg2);cursor:pointer}
 .check input{accent-color:var(--accent);width:15px;height:15px}
-.upload-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.upload-row .grow{flex:1;min-width:200px;background:var(--bg3);border:1px solid var(--line2);
-  border-radius:8px;padding:10px 12px;color:var(--fg);outline:none}
 .preview{margin-top:10px}
 .preview img{max-width:230px;border-radius:9px;border:1px solid var(--line2);display:block}
 .hint{font-family:var(--mono);font-size:11px;color:var(--fg3)}
