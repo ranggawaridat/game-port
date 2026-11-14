@@ -1,0 +1,65 @@
+name: Build & release backend
+
+# Setiap push ke main yang menyentuh backend, admin, atau script deploy akan
+# menghasilkan artifact + GitHub Release. Server tidak perlu git clone:
+# deploy/autodeploy.sh mengambil release "latest" dari URL publik.
+#
+# Frontend publik (index.html/app.js/style.css) tidak memicu job ini karena
+# sudah dideploy Vercel. Admin tetap ikut karena backend melayani UI admin.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "frontend/admin.html"
+      - "frontend/admin.css"
+      - "frontend/admin.js"
+      - "deploy/**"
+      - "Caddyfile.domain"
+      - ".env.example"
+      - ".github/workflows/deploy-backend.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    # workflow_dispatch dari branch lain tidak boleh menerbitkan release "latest"
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Package artifact
+        run: |
+          chmod +x deploy/package.sh deploy/deploy.sh deploy/autodeploy.sh
+          ./deploy/package.sh dist
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: deploy-${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          name: Backend build ${{ github.run_number }}
+          body: |
+            Commit: ${{ github.sha }}
+
+            Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            Artifact berisi binary linux/amd64, seed.sql, admin static, dan
+            script deploy. `.env` tidak pernah ikut.
+          files: |
+            dist/gameport-backend-linux-amd64.tar.gz
+            dist/SHA256SUMS
+            dist/version.txt
+          make_latest: "true"
+          fail_on_unmatched_files: true

@@ -1,0 +1,24 @@
+# =============================================================================
+# systemd timer — cek GitHub Release tiap 2 menit
+#
+# Pasang bersama gameport-autodeploy.service:
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now gameport-autodeploy.timer
+#   systemctl list-timers gameport-autodeploy.timer
+#
+# Deploy manual kapan saja:
+#   sudo systemctl start gameport-autodeploy.service
+# =============================================================================
+
+[Unit]
+Description=GamePort — cek update backend tiap 2 menit
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=2min
+AccuracySec=30s
+RandomizedDelaySec=20s
+Unit=gameport-autodeploy.service
+
+[Install]
+WantedBy=timers.target

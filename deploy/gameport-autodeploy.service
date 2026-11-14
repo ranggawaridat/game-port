@@ -1,0 +1,31 @@
+# =============================================================================
+# systemd unit — GamePort auto-deploy backend
+#
+# Dipasang di HOST (bukan di dalam container). Unit ini memanggil
+# autodeploy.sh di dalam container Hermes lewat docker exec.
+#
+# Pasang:
+#   sudo cp .../deploy/gameport-autodeploy.service /etc/systemd/system/
+#   sudo cp .../deploy/gameport-autodeploy.timer   /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now gameport-autodeploy.timer
+#
+# Cek:
+#   systemctl list-timers gameport-autodeploy.timer
+#   journalctl -u gameport-autodeploy.service -n 50 --no-pager
+#
+# Ganti "alpha-hermes" kalau nama container berbeda. Path script adalah
+# path DI DALAM container, yaitu hasil deploy.sh (stabil, ikut ter-update).
+# =============================================================================
+
+[Unit]
+Description=GamePort — auto-deploy backend dari GitHub Release
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/docker exec -u hermes alpha-hermes /opt/data/workspace/deployed/game-port/deploy/autodeploy.sh
+TimeoutStartSec=15min
+Nice=10
