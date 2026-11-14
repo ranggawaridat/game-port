@@ -13,9 +13,8 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&
  * Bila halaman ini dilayani oleh backend sendiri (dev / masa monolitik),
  * base dibiarkan kosong sehingga semua URL tetap relative.
  */
-const SAMA_ORIGIN = location.hostname !== 'gameport.web.id';
-const API_ORIGIN  = SAMA_ORIGIN ? '' : 'https://api.gameport.web.id';
-const API         = API_ORIGIN + '/api/v1';
+const API_ORIGIN = 'https://api.gameport.web.id';
+const API = `${API_ORIGIN}/api/v1`;
 
 /* Berkas dari backend (gambar sampul, dsb) ditulis relative di database.
    Dari origin berbeda, harus diawali origin API. */
