@@ -1,0 +1,16 @@
+# Pastikan script yang dijalankan di Linux selalu LF, termasuk saat checkout
+# di Windows. Tanpa ini, shebang bash bisa terbaca "#!/usr/bin/env bash\r".
+* text=auto
+
+.gitattributes text eol=lf
+*.sh        text eol=lf
+*.service   text eol=lf
+*.timer     text eol=lf
+*.sql       text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.env       text eol=lf
+.env.example text eol=lf
+Dockerfile  text eol=lf
+Caddyfile   text eol=lf
+Caddyfile.* text eol=lf
