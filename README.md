@@ -99,7 +99,7 @@ Arsitektur produksi saat ini:
 
 ```
 gameport.web.id      → Vercel (frontend statis, root directory frontend/)
-api.gameport.web.id  → VPS (API Go, safelink, /uploads)
+api.gameport.web.id  → VPS (API Go, safelink)
 vps.gameport.web.id  → VPS (panel admin)
 ```
 
@@ -114,7 +114,8 @@ server:
 4. `deploy.sh` memasang binary/admin, migrasi skema, tes health/API/admin, dan
    rollback otomatis kalau gagal.
 
-`.env` dan `uploads/` tetap di server dan tidak pernah ikut artifact.
+`.env` (dan folder `uploads/` lama) tetap di server dan tidak pernah ikut
+artifact.
 
 Panduan lengkap: **[deploy/README.md](deploy/README.md)**.
 
@@ -200,7 +201,6 @@ bawah `ADMIN_PATH` (path rahasia di `.env`). Butuh sesi cookie.
 | `POST {ADMIN_PATH}/api/port` | buat port baru |
 | `PUT {ADMIN_PATH}/api/port/{id}` | ubah port |
 | `DELETE {ADMIN_PATH}/api/port/{id}` | hapus port |
-| `POST {ADMIN_PATH}/api/upload` | multipart `file` → `{"url":"/uploads/..."}` |
 
 Payload port:
 
@@ -214,7 +214,7 @@ Payload port:
   "author": "FWGS",
   "category_slug": "source-port",
   "status_slug": "stable",
-  "image_url": "/uploads/xxx.png",
+  "image_url": "https://example.com/half-life.jpg",
   "download_url": "https://example.com/hl.apk",
   "published": true,
   "needs_own_data": true,
@@ -257,7 +257,7 @@ jadi isi katalog tidak terhapus.
   tidak mengumumkan keberadaan panel
 - Password admin di-hash SHA-256, dibandingkan konstan-waktu
 - Jeda 600 ms pada login gagal (memperlambat brute force)
-- Upload diverifikasi magic bytes, bukan hanya ekstensi nama file
+- Gambar sampul memakai URL eksternal — tidak ada unggahan berkas
 - Cookie `HttpOnly`, `SameSite=Lax`, `Secure` otomatis saat HTTPS
   (dibaca dari `X-Forwarded-Proto`)
 - Halaman admin `no-store` + `noindex, nofollow`

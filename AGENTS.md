@@ -34,7 +34,7 @@ Running the Go server directly (needs a reachable PostgreSQL):
 
 ```bash
 cd backend
-STATIC_DIR=../frontend UPLOAD_DIR=../uploads \
+STATIC_DIR=../frontend \
 DATABASE_URL='postgres://gameport:pass@127.0.0.1:5432/gamedb?sslmode=disable' \
 ADMIN_PASSWORD=dev go run ./cmd/server
 ```
@@ -43,7 +43,8 @@ ADMIN_PASSWORD=dev go run ./cmd/server
   by Docker Compose, systemd, and `deploy/manager.sh` — not by Go.
 - `ADMIN_PASSWORD` (or `ADMIN_PASSWORD_HASH`) is mandatory; startup fails without it.
 - `STATIC_DIR` defaults to `static` and `UPLOAD_DIR` to `uploads`, both relative to the
-  working directory. From `backend/`, the UI is `../frontend` and uploads are `../uploads`.
+  working directory. From `backend/`, the UI is `../frontend`. `UPLOAD_DIR` only serves
+  legacy files from the removed upload feature.
 - The Compose `db` service does not publish a host port, and the backend image bakes in
   `frontend/`. For UI changes run `docker compose up -d --build`; only `uploads/` is
   bind-mounted. For host-side `go run`, point `DATABASE_URL` at your own Postgres — the
@@ -62,8 +63,9 @@ ADMIN_PASSWORD=dev go run ./cmd/server
   refuses to serve `ADMIN_PATH`. It still falls back to `index.html` for extensionless
   paths, but production has no `index.html`; public `/port/{slug}` is Vercel's route.
 - CORS applies only to paths starting with `/api/` and is driven by `CORS_ORIGINS`.
-- Uploads are capped at 5 MB and validated by magic bytes, not filename extension; they
-  are served from `/uploads/{file}`.
+- There is no image upload endpoint. `image_url` is a full external URL entered in the
+  admin form; `/uploads/{file}` stays read-only for files uploaded before the feature was
+  removed.
 - The frontend and API are split: `app.js` always targets
   `https://api.gameport.web.id/api/v1` (Vercel → API is cross-origin). Edit `API_ORIGIN`
   if domains change, add the new origin to `CORS_ORIGINS`, and keep using `asetAPI()` for
@@ -97,8 +99,7 @@ ADMIN_PASSWORD=dev go run ./cmd/server
   app on `0.0.0.0:8181`). `deploy/package.sh` is the only script that needs Go.
 - `.env` lives only on the server, is never in Git or a release artifact, and is not
   touched by `deploy.sh`. `manager.sh` sources it; values containing `&` or `?` must be
-  quoted there. Change `.env` then `manager.sh restart`. `PUBLIC_BASE_URL` must be the API
-  origin (`https://api.gameport.web.id`), not the Vercel apex.
+  quoted there. Change `.env` then `manager.sh restart`.
 - Caddy variants: `Caddyfile.domain` is the current `api.` + `vps.` setup (apex and `www`
   are Vercel; it hardcodes container IP `172.18.0.3`), `Caddyfile` is a single-domain
   template, `Caddyfile.ip` serves raw HTTP on `:80`. Never add an apex/`www` block while

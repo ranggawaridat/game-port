@@ -45,7 +45,7 @@ Path penting (di dalam container Hermes):
 ├── Caddyfile.domain                             referensi untuk host
 ├── .env.example                                 referensi, BUKAN .env
 ├── .env                                         milik server, tidak disentuh
-└── uploads/                                     milik server, tidak disentuh
+└── uploads/                                     gambar lama (read-only)
 ```
 
 ---
@@ -70,6 +70,7 @@ DATABASE_URL='postgres://gameport:GANTI_PASSWORD_KUAT@/gamedb?host=/opt/data/gam
 APP_HOST=0.0.0.0
 APP_PORT=8181
 STATIC_DIR=./static
+# Hanya untuk menyajikan gambar lama dari fitur unggah yang sudah dihapus.
 UPLOAD_DIR=./uploads
 
 # Origin frontend Vercel + panel admin.
@@ -79,9 +80,6 @@ CORS_ORIGINS=https://gameport.web.id,https://www.gameport.web.id,https://vps.gam
 ADMIN_PASSWORD=GANTI_PASSWORD_ADMIN
 # Ganti dengan path rahasia milikmu; jangan pakai /admin.
 ADMIN_PATH=/panel-x7k2
-
-# Harus origin API (bukan apex Vercel), karena /uploads dilayani backend.
-PUBLIC_BASE_URL=https://api.gameport.web.id
 
 SAFELINK_ENABLED=false
 SAFELINK_WAIT=10
@@ -97,11 +95,10 @@ Catatan `DATABASE_URL`: kalau password mengandung karakter URL (`:`, `@`, `/`,
 mengandung `&` juga wajib dikutip seperti contoh di atas.
 
 Kalau `.env` lama sudah ada dan sudah jalan, **jangan diganti**. Cukup
-pastikan nilai `CORS_ORIGINS` dan `PUBLIC_BASE_URL` sesuai arsitektur baru:
+pastikan `CORS_ORIGINS` sesuai arsitektur baru:
 
 - `CORS_ORIGINS` harus memuat origin Vercel (`https://gameport.web.id`,
   `https://www.gameport.web.id`) dan origin admin (`https://vps.gameport.web.id`).
-- `PUBLIC_BASE_URL` harus `https://api.gameport.web.id`, bukan apex Vercel.
 
 Setelah mengubah `.env`, restart app (tidak perlu deploy ulang):
 

@@ -22,7 +22,7 @@ game-port/
 │   ├── admin.html    panel admin
 │   ├── admin.js
 │   └── admin.css
-└── uploads/          gambar yang diunggah lewat panel admin
+└── uploads/          gambar lama (fitur unggah sudah dihapus)
 ```
 
 ---
@@ -122,7 +122,7 @@ sudo systemctl status gameport
 sudo journalctl -u gameport -n 30 --no-pager
 ```
 
-Kalau error, biasanya karena permission folder `uploads`:
+Kalau gambar lama tidak tampil, pastikan folder `uploads` bisa dibaca:
 
 ```bash
 sudo chown -R gameport:gameport /srv/gameport/uploads
@@ -212,9 +212,9 @@ Masukkan `ADMIN_PASSWORD`. Setelah masuk:
 
 Field yang wajib: **nama game**, **kategori**, **status**. Sisanya opsional.
 
-**Gambar:** klik "Pilih Berkas", maksimal 5 MB, format jpg/png/webp/gif/avif.
-Gambar disimpan di `uploads/` dan disajikan lewat `/uploads/nama-file`.
-Bisa juga isi kolom gambar dengan URL eksternal.
+**Gambar:** tempel URL gambar langsung (mis. `https://contoh.com/sampul.jpg`).
+Tidak ada unggahan berkas; gambar lama di `uploads/` tetap disajikan lewat
+`/uploads/nama-file`.
 
 **Terbitkan:** jika tidak dicentang, port berstatus **draf** — tersimpan
 di admin tapi tidak muncul di halaman publik.
@@ -287,7 +287,7 @@ sudo journalctl -u gameport -n 50 --no-pager
 Penyebab umum:
 - `ADMIN_PASSWORD` belum diisi → server menolak start (memang disengaja)
 - Password DB salah
-- Folder `uploads` tidak bisa ditulis
+- Folder `uploads` tidak bisa dibaca (hanya untuk gambar lama)
 
 **Admin tidak bisa login**
 
@@ -297,8 +297,9 @@ Penyebab umum:
 
 **Gambar tidak muncul**
 
-- Cek `ls -la /srv/gameport/uploads`
-- Cek permission: harus bisa dibaca user `gameport`
+- Gambar baru diisi URL eksternal — cek URL-nya bisa diakses publik
+- Untuk gambar lama: cek `ls -la /srv/gameport/uploads`
+- Pastikan folder bisa dibaca user `gameport`
 - Coba akses langsung `https://domainmu.com/uploads/nama-file.png`
 
 **Caddy gagal dapat sertifikat**
@@ -321,7 +322,6 @@ kapasitas provider.
    login gagal untuk memperlambat brute force.
 3. Sesi admin berlaku **12 jam**, disimpan di database, dan dihapus saat
    logout.
-4. Upload dibatasi 5 MB dan diverifikasi lewat magic bytes — bukan
-   sekadar ekstensi nama file.
+4. Gambar sampul diisi URL eksternal; tidak ada endpoint unggah berkas.
 5. Semua data port (`published = true`) bisa diakses publik; yang draf
    hanya lewat admin.
