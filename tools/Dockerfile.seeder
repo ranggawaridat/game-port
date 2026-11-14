@@ -1,0 +1,23 @@
+# Seeder GamePort — pembungkus kecil untuk tools/seed-github.py.
+#
+# Dibangun oleh docker compose (lihat service "seeder" di docker-compose.yml).
+# Isinya sengaja minimal: python untuk generator, postgresql-client untuk psql.
+FROM python:3.12-alpine
+
+RUN apk add --no-cache postgresql-client tzdata \
+    && adduser -D -u 10002 seeder
+
+WORKDIR /src
+
+COPY tools/seed-github.py  /src/tools/seed-github.py
+COPY tools/seeder-run.sh   /src/tools/seeder-run.sh
+
+RUN chmod +x /src/tools/seeder-run.sh \
+    && chown -R seeder:seeder /src
+
+USER seeder
+
+# Jam jalan diatur lewat SEED_HOUR_UTC (default 0 = 07:00 WIB)
+ENV SEED_HOUR_UTC=0
+
+ENTRYPOINT ["/src/tools/seeder-run.sh"]
