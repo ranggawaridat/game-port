@@ -38,14 +38,14 @@
 #  127.0.0.1:8181 adalah port yang dipublish docker compose (APP_BIND).
 #  Jangan ganti dengan IP container — alamatnya berubah setiap recreate.
 #
-#  www.gameport.web.id TIDAK diaktifkan di sini. Blok domain hanya boleh
-#  ditambahkan bila record DNS-nya juga menunjuk VPS ini; kalau www masih
-#  mengarah ke Vercel, menambahkannya membuat reload Caddy gagal.
-#  Bila nanti www dipindah ke VPS, cukup tambahkan di akhir file:
+#  www.gameport.web.id AKTIF: seluruh lalu lintas www dialihkan permanen ke
+#  domain utama. Record DNS www WAJIB menunjuk VPS ini juga:
 #
-#        www.gameport.web.id {
-#            redir https://gameport.web.id{uri} permanent
-#        }
+#        www.gameport.web.id   A   149.41.192.124
+#
+#  Kalau www masih mengarah ke Vercel/Lainnya, Caddy gagal menerbitkan
+#  sertifikat untuk www dan `systemctl reload caddy` ikut gagal — pasang
+#  DNS-nya lebih dulu, baru reload.
 # =============================================================================
 
 gameport.web.id {
@@ -114,4 +114,13 @@ gameport.web.id {
 			roll_keep 3
 		}
 	}
+}
+
+# =============================================================================
+#  www → domain utama
+#  Satu alamat resmi: gameport.web.id. www hanya pengalih permanen (301),
+#  supaya tidak ada dua versi konten yang bersaing di mesin pencari.
+# =============================================================================
+www.gameport.web.id {
+	redir https://gameport.web.id{uri} permanent
 }
