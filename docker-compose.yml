@@ -77,6 +77,10 @@ services:
   # (default 0 = 07:00 WIB), menjalankan tools/seed-github.py --update,
   # lalu menulis hasilnya langsung ke service db lewat psql.
   seeder:
+    # MATI secara default. Sengaja di balik profile supaya
+    # "docker compose up -d" tidak pernah menyalakannya.
+    # Nyalakan hanya bila diminta:  docker compose --profile seeder up -d
+    profiles: ["seeder"]
     build:
       context: .
       dockerfile: tools/Dockerfile.seeder
