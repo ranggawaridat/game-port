@@ -2,10 +2,14 @@
 'use strict';
 
 /* ---------- Konfigurasi origin ----------
- *   publik  : https://gameport.web.id          (Vercel, statis)
- *   backend : https://api.gameport.web.id/v1   (VPS, Go)
+ * Satu domain: frontend, API, dan admin semuanya di gameport.web.id,
+ * disajikan backend Go di belakang Caddy. Jadi API dipanggil relative —
+ * tidak ada CORS, dan cookie admin tetap satu origin.
+ *
+ * Bila suatu saat frontend dipindah ke host terpisah (Vercel), isi
+ * API_ORIGIN dengan origin backend-nya, mis. 'https://api.gameport.web.id'.
  */
-const API_ORIGIN = 'https://api.gameport.web.id';
+const API_ORIGIN = '';
 const API = `${API_ORIGIN}/api/v1`;
 const SITE = 'https://gameport.web.id';
 const DEFAULT_TITLE = 'GamePort — Port Native Android dari Game PC & Konsol';

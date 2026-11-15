@@ -1,91 +1,53 @@
 # =============================================================================
-# Caddyfile — GamePort backend
+# Caddyfile — GamePort, SATU domain
 #
-#   gameport.web.id        frontend statis di Vercel (bukan Caddy)
-#   api.gameport.web.id    backend Go di VPS   (API ber-version, safelink)
-#   vps.gameport.web.id    panel admin        (login kamu)
+#   https://gameport.web.id/            frontend publik (disajikan backend)
+#   https://gameport.web.id/api/v1/...  API JSON
+#   https://gameport.web.id/admin       panel admin
+#   https://gameport.web.id/dl/...      gerbang safelink
+#   https://gameport.web.id/uploads/... gambar sampul
 #
-# Arsitektur:
-#   [pengunjung] → Vercel (frontend) ──fetch──▶ api.gameport.web.id ─┐
-#   [kamu]       → vps.gameport.web.id ─────────────────────────────┤
-#                                                                    ▼
-#                                              backend Go (container, :8181)
+# Semua di satu origin. Backend Go melayani berkas frontend dari STATIC_DIR,
+# jadi tidak ada lagi subdomain api./vps. dan tidak ada CORS.
 #
-# Target proxy: 127.0.0.1:8181 — port backend yang dipublish docker compose
-# di host (lihat docker-compose.yml, APP_BIND). Stabil walau container
-# di-recreate; IP container tidak dipakai lagi.
+#   [pengunjung] ──▶ Caddy (TLS) ──▶ 127.0.0.1:8181 (backend Go)
+#
+# Target proxy 127.0.0.1:8181 = port yang dipublish docker compose di host
+# (APP_BIND). Stabil walau container di-recreate.
 #
 # ---------------------------------------------------------------------------
-# DNS
+# URUTAN PEMASANGAN (penting — jangan dibalik)
 #
-#   gameport.web.id / www   → Vercel (ikuti dashboard Vercel)
-#   api.gameport.web.id     → 149.41.192.124
-#   vps.gameport.web.id     → 149.41.192.124
+#   1. DNS: gameport.web.id  A  149.41.192.124   ← WAJIB menunjuk VPS,
+#      bukan Vercel. Selama masih ke Vercel, Caddy tidak bisa menerbitkan
+#      sertifikat dan reload akan gagal.
+#      Cek: dig +short gameport.web.id
 #
-# Hanya api. dan vps. yang punya site block di sini. JANGAN menambahkan blok
-# apex/www selama DNS-nya menunjuk Vercel — Caddy akan gagal minta sertifikat
-# untuk domain yang tidak dilayaninya dan mengulang terus. Log:
-#   sudo journalctl -u caddy -n 50 --no-pager
+#   2. Backend jalan dengan kode terbaru (frontend ikut di dalam image):
+#        cd /opt/game-port && git pull --ff-only && docker compose up -d --build backend
+#
+#   3. Pasang config ini:
+#        sudo cp /opt/game-port/Caddyfile.domain /etc/caddy/Caddyfile
+#        sudo caddy validate --config /etc/caddy/Caddyfile
+#        sudo systemctl reload caddy
+#
+# Setelah ini Vercel tidak dipakai lagi. Proyek Vercel boleh dibiarkan
+# (tidak menerima trafik) atau dihapus dari dashboard.
 # ---------------------------------------------------------------------------
-#
-# Pasang di host (file ini ikut di-install oleh deploy/deploy.sh ke folder
-# deployed, jadi host bisa membacanya lewat bind mount):
-#   sudo cp /opt/alpha/hermes/workspace/deployed/game-port/Caddyfile.domain /etc/caddy/Caddyfile
-#   sudo caddy validate --config /etc/caddy/Caddyfile
-#   sudo systemctl reload caddy
+# www.gameport.web.id — ikut diarahkan ke sini HANYA bila record DNS-nya juga
+# menunjuk VPS. Kalau www masih di Vercel, biarkan blok di bawah nonaktif;
+# menambahkan domain yang tidak menunjuk ke server ini membuat reload gagal.
+# www.gameport.web.id {
+#	redir https://gameport.web.id{uri} permanent
+# }
 # =============================================================================
 
-# ── API publik ──────────────────────────────────────────────────────────────
-api.gameport.web.id {
+gameport.web.id {
 	encode zstd gzip
 
-	# Payload POST kecil (mint safelink). Unduhan adalah respons, bukan body.
+	# Unggahan sampul dibatasi backend 5 MB; JSON admin 1 MB.
 	request_body {
-		max_size 2MB
-	}
-
-	header {
-		Strict-Transport-Security "max-age=31536000; includeSubDomains"
-		X-Content-Type-Options nosniff
-		X-Frame-Options DENY
-		Referrer-Policy strict-origin-when-cross-origin
-		-Server
-	}
-
-	# CORS ditangani backend lewat header Access-Control-Allow-Origin,
-	# asalnya daftar origin eksplisit di CORS_ORIGINS — bukan wildcard.
-	# Pastikan .env berisi:
-	#   CORS_ORIGINS=https://gameport.web.id,https://www.gameport.web.id,https://vps.gameport.web.id
-
-	reverse_proxy 127.0.0.1:8181 {
-		header_up X-Forwarded-Proto {scheme}
-		header_up X-Real-IP {remote_host}
-		transport http {
-			read_timeout 120s
-			write_timeout 120s
-		}
-	}
-
-	log {
-		output file /var/log/caddy/gameport-api.log {
-			roll_size 10MB
-			roll_keep 3
-		}
-	}
-}
-
-# ── Panel admin (login kamu) ────────────────────────────────────────────────
-# Admin UI dilayani backend, dan fetch-nya relative ke origin ini —
-# satu origin, jadi cookie sesi bekerja tanpa CORS.
-#
-# Seluruh subdomain ini noindex; ADMIN_PATH sendiri tetap rahasia dan
-# tidak ditautkan dari situs publik.
-vps.gameport.web.id {
-	encode zstd gzip
-
-	# Payload admin berupa JSON (backend membatasi 1 MB).
-	request_body {
-		max_size 2MB
+		max_size 8MB
 	}
 
 	header {
@@ -93,21 +55,43 @@ vps.gameport.web.id {
 		X-Content-Type-Options nosniff
 		X-Frame-Options SAMEORIGIN
 		Referrer-Policy strict-origin-when-cross-origin
-		X-Robots-Tag "noindex, nofollow, noarchive, noimageindex"
 		-Server
 	}
+
+	# Panel admin tidak boleh terindeks. Path-nya sendiri (ADMIN_PATH di .env)
+	# tetap rahasia dan tidak ditautkan dari situs publik.
+	@admin path /admin*
+	header @admin X-Robots-Tag "noindex, nofollow, noarchive, noimageindex"
+
+	# API: jangan pernah disimpan browser / proxy perantara.
+	@api path /api/*
+	header @api Cache-Control "no-store"
+
+	# HTML: selalu revalidasi supaya deploy langsung terlihat.
+	@html path / /port/*
+	header @html Cache-Control "no-cache"
+
+	# Berkas statis: nama tetap, jadi wajib revalidasi. Cache panjang di sini
+	# pernah membuat app.js lama bertahan berhari-hari di HP pengguna.
+	@aset path /style.css /app.js /admin.css /admin.js /favicon.svg /robots.txt
+	header @aset Cache-Control "no-cache"
+
+	# Gambar unggahan: nama berkas unik, aman di-cache lama.
+	@uploads path /uploads/*
+	header @uploads Cache-Control "public, max-age=604800"
 
 	reverse_proxy 127.0.0.1:8181 {
 		header_up X-Forwarded-Proto {scheme}
 		header_up X-Real-IP {remote_host}
 		transport http {
+			# Unduhan bisa besar; beri ruang untuk respons lambat.
 			read_timeout 120s
 			write_timeout 120s
 		}
 	}
 
 	log {
-		output file /var/log/caddy/gameport-vps.log {
+		output file /var/log/caddy/gameport.log {
 			roll_size 10MB
 			roll_keep 3
 		}
