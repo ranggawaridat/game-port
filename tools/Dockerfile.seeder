@@ -11,6 +11,7 @@ WORKDIR /src
 
 COPY tools/seed-github.py    /src/tools/seed-github.py
 COPY tools/seed-telegram.py  /src/tools/seed-telegram.py
+COPY tools/seed-napl.py      /src/tools/seed-napl.py
 COPY tools/seeder-run.sh   /src/tools/seeder-run.sh
 
 RUN chmod +x /src/tools/seeder-run.sh \

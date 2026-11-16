@@ -59,10 +59,19 @@ putaran() {
     log "GAGAL: seed-telegram.py tidak menghasilkan SQL"
   fi
 
+  # sumber 3: NAPL (Native Android Port List) — CSV Google Sheets
+  if python3 /src/tools/seed-napl.py -o /tmp/seed-napl.sql; then
+    psql -q -v ON_ERROR_STOP=1 -f /tmp/seed-napl.sql \
+      && log "napl: SQL diterapkan" \
+      || log "GAGAL: psql menolak SQL napl"
+  else
+    log "GAGAL: seed-napl.py tidak menghasilkan SQL"
+  fi
+
   N=$(psql -tAc "SELECT count(*) FROM ports" 2>/dev/null)
   D=$(psql -tAc "SELECT count(*) FROM ports WHERE published = false" 2>/dev/null)
   log "OK — katalog ${N:-?} port (${D:-0} draf menunggu review)"
-  rm -f /tmp/seed-github.sql /tmp/seed-telegram.sql
+  rm -f /tmp/seed-github.sql /tmp/seed-telegram.sql /tmp/seed-napl.sql
 }
 
 log "seeder siap — jadwal harian ${SEED_HOUR_UTC}:00 UTC"
