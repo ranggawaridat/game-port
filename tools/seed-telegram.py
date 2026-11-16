@@ -32,6 +32,15 @@ import sys
 import urllib.request
 
 CHANNEL = "PortalGamerID"
+
+# Slug yang sudah ada di database dengan nama sedikit berbeda. Tanpa peta ini
+# seeder membuat entri kembar (slug beda, game sama). Tambahkan pasangan baru
+# di sini setiap kali pemeriksa duplikat menemukan kembaran.
+ALIAS = {
+    "metal-gear-rising-revengeance": "metal-gear-rising-revengeance-zandatsu",
+    "downhill-domination": "downhill-domination-downhill-revived",
+    "defjam-fight-for-ny": "def-jam-fight-for-ny",
+}
 BASE = f"https://t.me/s/{CHANNEL}"
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " \
      "(KHTML, like Gecko) Chrome/131.0 Safari/537.36"
@@ -177,8 +186,11 @@ def parse_post(blok, msg_id):
 
     bersih = bool(re.match(r"^v?\d", versi.strip() or "x")) and bool(ambil_field(teks, "Size"))
 
+    slug = slugify(nama)
+    slug = ALIAS.get(slug, slug)                      # hindari entri kembar
+
     return dict(
-        slug=slugify(nama),
+        slug=slug,
         game=nama,
         game_sort=re.sub(r"\s*\(.*?\)", "", nama).strip(),
         version=versi,
@@ -201,29 +213,38 @@ def parse_post(blok, msg_id):
 
 
 def kumpulkan(pages):
-    """Ambil beberapa halaman pratinjau; t.me/s/ hanya menampilkan ~20 post."""
-    hasil, before = [], ""
-    for _ in range(pages):
+    """Ambil beberapa halaman pratinjau.
+
+    Penting: di t.me/s/, post tersusun NAIK (paling lama di atas). Kursor
+    paginasi (?before=) harus id TERLAMA di halaman itu — memakai id
+    terbaru membuat halaman berikutnya hampir sama dengan sebelumnya.
+    """
+    hasil, before, dilihat = [], "", set()
+    for i in range(pages):
         url = BASE + (f"?before={before}" if before else "")
         try:
             page = ambil(url)
         except Exception as e:  # noqa: BLE001
-            print(f"  gagal ambil halaman: {e}", file=sys.stderr)
+            print(f"  gagal ambil halaman {i + 1}: {e}", file=sys.stderr)
             break
         id_urut = re.findall(r'data-post="[^"]+/(\d+)"', page)
         if not id_urut:
             break
+        baru = [x for x in id_urut if x not in dilihat]
+        if not baru:
+            break                                  # tidak ada kemajuan
+        dilihat.update(baru)
         blok_semua = re.split(r'(?=<div class="tgme_widget_message )', page)
         for blok in blok_semua:
             m = re.search(r'data-post="[^"]+/(\d+)"', blok)
-            if not m:
+            if not m or m.group(1) not in baru:
                 continue
             p = parse_post(blok, m.group(1))
             if p:
                 hasil.append(p)
-        before = id_urut[-1]                      # halaman berikutnya = lebih lama
-        if before in id_urut[:-1]:
-            break
+        before = min(id_urut, key=int)             # terlama = halaman berikutnya
+        print(f"  halaman {i + 1}: {len(baru)} post baru (kursor {before})",
+              file=sys.stderr)
     # buang duplikat slug, pertahankan yang terbaru (post teratas)
     unik = {}
     for p in hasil:
@@ -279,7 +300,8 @@ def to_sql(rows):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("-o", "--out", help="tulis SQL ke berkas ini")
-    ap.add_argument("--pages", type=int, default=3, help="halaman pratinjau (default 3 ≈ 60 post)")
+    ap.add_argument("--pages", type=int, default=30,
+                    help="halaman pratinjau (default 30 ≈ 570 post)")
     ap.add_argument("--json", action="store_true", help="cetak ringkasan JSON")
     args = ap.parse_args()
 
