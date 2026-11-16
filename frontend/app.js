@@ -18,6 +18,9 @@ const DEFAULT_IMAGE = SITE + '/og-default.png';
 
 const state = { q:'', kategori:'', status:'', platform:'', genre:'', sort:'terbaru', limit:24, offset:0 };
 const $ = (s) => document.querySelector(s);
+// Label versi: tag GitHub kadang sudah berawalan "v" (v0.8.8),
+// jadi jangan menambah "v" kedua kali.
+const verLabel = (v) => { const s = String(v ?? '').trim(); return s ? 'v' + s.replace(/^v/i, '') : ''; };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 const asetAPI = (u) => (u && u.startsWith('/') ? API_ORIGIN + u : u);
@@ -286,7 +289,7 @@ function cardHtml(p) {
   const platforms = (p.platforms||[])
     .map(x => `<a class="tag lnk" href="${platformUrl(x)}">${esc(PLATFORM_LABEL[x]||x)}</a>`).join('');
   const meta = [];
-  if (p.version) meta.push(`<span class="mi">v${esc(p.version)}</span>`);
+  if (p.version) meta.push(`<span class="mi">${esc(verLabel(p.version))}</span>`);
   if (p.file_size) meta.push(`<span class="mi">${esc(p.file_size)}</span>`);
   if (p.genre_name && p.genre_slug) meta.push(`<a class="mi g lnk" href="${genreUrl(p)}">${esc(p.genre_name)}</a>`);
 
@@ -529,7 +532,7 @@ function detailHtml(p) {
   const plats = (p.platforms||[])
     .map(x => `<a class="tag lnk" href="${platformUrl(x)}">${esc(PLATFORM_LABEL[x]||x)}</a>`).join('');
   const meta = [
-    p.version   ? `v${esc(p.version)}` : '',
+    p.version   ? esc(verLabel(p.version)) : '',
     p.file_size ? esc(p.file_size) : '',
     p.genre_name && p.genre_slug
       ? `<a class="lnk" href="${genreUrl(p)}">${esc(p.genre_name)}</a>` : ''

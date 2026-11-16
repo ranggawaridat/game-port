@@ -46,7 +46,7 @@ CANDIDATES = [
          notes="Pasang APK, lalu salin DIABDAT.MPQ ke folder yang diminta "
                "aplikasi saat pertama dibuka."),
 
-    dict(repo="FWGS/xash3d-fwgs", slug="half-life-xash3d",
+    dict(repo="FWGS/xash3d-fwgs", slug="half-life-xash3d-fwgs",
          game="Half-Life (Xash3D FWGS)", genre="shooter", category="source-port",
          needs_own_data=True,
          desc="Mesin GoldSrc modern yang menjalankan Half-Life di Android. "
@@ -62,7 +62,7 @@ CANDIDATES = [
          notes="Pasang APK, lalu tunjuk folder berisi berkas data Jazz "
                "Jackrabbit 2 milikmu."),
 
-    dict(repo="dfdx047/Zandatsu", slug="metal-gear-rising-zandatsu",
+    dict(repo="dfdx047/Zandatsu", slug="metal-gear-rising-revengeance-zandatsu",
          game="Metal Gear Rising: Revengeance (Zandatsu)", genre="action",
          category="xbox-ps-psp-pc", needs_own_data=False,
          desc="Upaya menghadirkan Metal Gear Rising: Revengeance ke Android. "
@@ -70,14 +70,14 @@ CANDIDATES = [
          notes="Pasang APK. Cek catatan rilis di halaman sumber untuk "
                "kebutuhan GPU dan data tambahan."),
 
-    dict(repo="Andiweli/CubeEvil4-Android", slug="cube-evil-4-android",
+    dict(repo="Andiweli/CubeEvil4-Android", slug="cube-evil-4-android-port",
          game="Cube Evil 4 (Android Port)", genre="horror",
          category="xbox-ps-psp-pc", needs_own_data=False,
          desc="Port bergaya survival horror klasik ke Android. Ikuti catatan "
               "rilis untuk perubahan dan masalah yang diketahui.",
          notes="Pasang APK. Rincian tambahan ada di halaman rilis."),
 
-    dict(repo="skuza-oss/Downhill-Revived", slug="downhill-domination-revived",
+    dict(repo="skuza-oss/Downhill-Revived", slug="downhill-domination-downhill-revived",
          game="Downhill Domination (Downhill Revived)", genre="sports",
          category="xbox-ps-psp-pc", needs_own_data=False,
          desc="Port balap sepeda gunung Downhill Domination ke Android, "
@@ -181,29 +181,32 @@ def build():
             errors.append(f"{c['repo']}: {e}")
             continue
 
-        # /releases/latest hanya mengembalikan rilis non-prerelease. Banyak
-        # proyek port menandai build Android-nya sebagai pre-release, jadi
-        # endpoint itu 404 walau rilisnya ada — jatuh ke daftar rilis.
+        # Ambil beberapa rilis terakhir, lalu pakai yang PALING BARU di antara
+        # yang punya berkas .apk. Rilis terbaru sering berupa build tanpa APK
+        # (mis. Cataclysm CDDA experimental), sehingga memilih "terbaru" saja
+        # membuat entri tidak pernah tersegarkan. Cara ini sekaligus menangani
+        # proyek yang menandai semua rilisnya sebagai pre-release.
         try:
-            rel = api_get(f"/repos/{c['repo']}/releases/latest")
-        except urllib.error.HTTPError:
-            try:
-                rilis = api_get(f"/repos/{c['repo']}/releases?per_page=1")
-                rel = rilis[0] if rilis else {}
-            except Exception as e:  # noqa: BLE001
-                errors.append(f"{c['repo']}: gagal baca rilis ({e})")
-                continue
+            rilis = api_get(f"/repos/{c['repo']}/releases?per_page=15")
         except Exception as e:  # noqa: BLE001
-            errors.append(f"{c['repo']}: {e}")
+            errors.append(f"{c['repo']}: gagal baca rilis ({e})")
             continue
 
-        if not rel:
+        if not rilis:
             skipped.append(f"{c['repo']}: belum punya rilis")
             continue
 
-        apk = pick_apk(rel.get("assets") or [])
+        rel, apk = {}, None
+        for kandidat in rilis:
+            if kandidat.get("draft"):
+                continue
+            a = pick_apk(kandidat.get("assets") or [])
+            if a:
+                rel, apk = kandidat, a
+                break
+
         if not apk:
-            skipped.append(f"{c['repo']}: rilis terbaru tanpa berkas .apk")
+            skipped.append(f"{c['repo']}: 15 rilis terakhir tanpa berkas .apk")
             continue
 
         rows.append(
