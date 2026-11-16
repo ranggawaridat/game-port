@@ -10,8 +10,8 @@
 #   version.txt                            commit SHA
 #   gameport-backend-linux-amd64/          isi mentah, untuk inspeksi
 #
-# Artifact berisi binary + seed + admin + script deploy. Frontend publik
-# (index.html, app.js, style.css) TIDAK ikut — itu milik Vercel.
+# Artifact berisi binary server + binary scraper + seed + admin + script deploy.
+# Frontend publik (index.html, app.js, style.css) TIDAK ikut — itu milik Vercel.
 # .env asli TIDAK pernah ikut; yang ikut hanya .env.example sebagai referensi.
 # =============================================================================
 set -euo pipefail
@@ -46,6 +46,11 @@ go vet ./...
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
   go build -trimpath -buildvcs=false -ldflags="-s -w" \
   -o "$STAGE/gameport" ./cmd/server
+# Scraper terjadwal: binary terpisah supaya server tidak ikut menanggung
+# kegagalan jaringan saat mengambil konten.
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+  go build -trimpath -buildvcs=false -ldflags="-s -w" \
+  -o "$STAGE/gameport-scraper" ./cmd/scraper
 
 cp db/seed.sql "$STAGE/seed.sql"
 # Semua aset admin.* (bukan frontend publik) ikut ke backend
@@ -55,11 +60,15 @@ cp "$ROOT/deploy/deploy.sh"                     "$STAGE/deploy/deploy.sh"
 cp "$ROOT/deploy/autodeploy.sh"                 "$STAGE/deploy/autodeploy.sh"
 cp "$ROOT/deploy/gameport-autodeploy.service"   "$STAGE/deploy/gameport-autodeploy.service"
 cp "$ROOT/deploy/gameport-autodeploy.timer"     "$STAGE/deploy/gameport-autodeploy.timer"
+cp "$ROOT/deploy/scrape.sh"                     "$STAGE/deploy/scrape.sh"
+cp "$ROOT/deploy/gameport-scraper.service"      "$STAGE/deploy/gameport-scraper.service"
+cp "$ROOT/deploy/gameport-scraper.timer"        "$STAGE/deploy/gameport-scraper.timer"
 cp "$ROOT/Caddyfile.domain"                     "$STAGE/Caddyfile.domain"
 cp "$ROOT/.env.example"                         "$STAGE/.env.example"
 
 printf '%s\n' "$VERSION" > "$STAGE/version.txt"
-chmod +x "$STAGE/gameport" "$STAGE/deploy/deploy.sh" "$STAGE/deploy/autodeploy.sh"
+chmod +x "$STAGE/gameport" "$STAGE/gameport-scraper" \
+         "$STAGE/deploy/deploy.sh" "$STAGE/deploy/autodeploy.sh" "$STAGE/deploy/scrape.sh"
 
 tar -C "$STAGE" -czf "$OUT/$NAME.tar.gz" .
 ( cd "$OUT" && sha256sum "$NAME.tar.gz" > SHA256SUMS )

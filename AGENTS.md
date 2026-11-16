@@ -2,7 +2,9 @@
 
 GamePort is a catalog of native Android game ports: a Go backend, PostgreSQL, and a
 vanilla HTML/CSS/JS frontend with a built-in admin panel. Catalog content is entered
-manually through the admin panel — there is no scraper or crawler.
+manually through the admin panel. An optional scheduled scraper (`cmd/scraper`) imports
+new items from a few public Android-port directories, but only as **drafts**
+(`published=false`) — nothing goes live without admin review.
 
 ## Layout (trust this over the README)
 
@@ -23,8 +25,15 @@ From `backend/`:
 ```bash
 go vet ./...
 go build ./...
-go test ./...        # no test files currently exist
+go test ./...        # scraper has unit tests; api has sitemap tests
 go run ./cmd/server
+```
+
+Scraper (needs a reachable DATABASE_URL; `-dry-run` writes nothing):
+
+```bash
+go run ./cmd/scraper -dry-run
+go run ./cmd/scraper -only droidports
 ```
 
 Full stack from the repo root: `cp .env.example .env`, set `GAMEDB_PASSWORD` and
@@ -78,6 +87,14 @@ ADMIN_PASSWORD=dev go run ./cmd/server
   proxied by a Vercel rewrite; `frontend/robots.txt` points at it. `PUBLIC_URL`
   (default `https://gameport.web.id`) controls the absolute URLs in it. Social preview
   image: `frontend/og-default.png`. Vercel Root Directory must be `frontend`.
+- Scraper lives in `internal/scraper` (`cmd/scraper`). It reads enabled rows from
+  `scrape_sources`, honours robots.txt + `Crawl-delay`, sends a clear User-Agent, and
+  always creates drafts (`published=false`). Supported `kind`s: `rss`, `playported`,
+  `markdown`; a new site needs a parser in `internal/scraper` and a matching value in the
+  `kind` CHECK constraint. Dedupe is `scrape_items(source_slug, external_id)` plus a
+  title/source-URL check across sources — keep both, or cron will recreate rows daily.
+  There are no download URLs in scraped drafts; `source_url` points at the reference page.
+  Run it via `deploy/scrape.sh` (loads `.env`) and `gameport-scraper.timer`.
 
 ## Database
 
@@ -89,6 +106,10 @@ ADMIN_PASSWORD=dev go run ./cmd/server
   only an initial `CREATE TABLE` will not migrate existing databases.
 - `v_port_detail` (flattened joins/platform array) and `v_statistik` (homepage aggregates)
   are dropped and recreated on every seed run. Prefer querying them over re-joining tables.
+- `scrape_sources` (one row per site) and `scrape_items` (dedupe log) back the scraper.
+  Seed sources use `ON CONFLICT (slug) DO NOTHING` so operator edits survive deploys. All
+  scraped ports are inserted with `published=false` and the source's default
+  `category_slug`/`status_slug`; review them in the admin list before publishing.
 
 ## Deploy and ops (do not run from a dev checkout)
 
@@ -103,6 +124,10 @@ ADMIN_PASSWORD=dev go run ./cmd/server
   supervisor, applies `seed.sql`, runs health/admin/API checks, and rolls back on failure.
   `deploy/manager.sh` still runs inside the Hermes container (Postgres over a unix socket,
   app on `0.0.0.0:8181`). `deploy/package.sh` is the only script that needs Go.
+- Scraper schedule is a separate host timer (`gameport-scraper.service`/`.timer`), enabled
+  manually like the auto-deploy timer; `deploy.sh` only refreshes the copies in the deployed
+  folder. It calls `deploy/scrape.sh` via `docker exec` because `.env` is not inherited by
+  `docker exec`. Scrape output is always drafts, so a failed run is non-critical.
 - `.env` lives only on the server, is never in Git or a release artifact, and is not
   touched by `deploy.sh`. `manager.sh` sources it; values containing `&` or `?` must be
   quoted there. Change `.env` then `manager.sh restart`.

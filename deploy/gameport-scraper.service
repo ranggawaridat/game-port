@@ -1,0 +1,34 @@
+# =============================================================================
+# systemd unit — GamePort scrape konten baru (draf)
+#
+# Dipasang di HOST, bukan di dalam container. Unit ini memanggil scrape.sh di
+# dalam container Hermes lewat docker exec, sama seperti autodeploy.
+#
+# Pasang:
+#   sudo cp .../deploy/gameport-scraper.service /etc/systemd/system/
+#   sudo cp .../deploy/gameport-scraper.timer   /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now gameport-scraper.timer
+#
+# Uji manual (langsung, tanpa menunggu jadwal):
+#   sudo systemctl start gameport-scraper.service
+#   journalctl -u gameport-scraper.service -n 80 --no-pager
+#
+# Hanya draf: port masuk dengan published=false. Tidak ada yang tayang tanpa
+# ditinjau di panel admin.
+#
+# Butuh akses keluar HTTPS (robots.txt, feed, halaman sumber) dan akses
+# database lewat manager.sh/.env di folder deployed.
+# =============================================================================
+
+[Unit]
+Description=GamePort — scrape konten baru (draf)
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/docker exec -u hermes alpha-hermes /opt/data/workspace/deployed/game-port/deploy/scrape.sh
+TimeoutStartSec=45min
+Nice=15

@@ -6,10 +6,12 @@
 #
 # Artifact dibuat oleh deploy/package.sh (dipakai GitHub Actions) dan berisi:
 #   gameport                 binary linux/amd64
+#   gameport-scraper         binary scrape konten baru (draf, dijalankan timer)
 #   seed.sql                 skema idempoten
 #   static/admin.*           panel admin (backend masih melayani UI admin)
 #   deploy/deploy.sh         script ini
 #   deploy/autodeploy.sh     poller GitHub Release
+#   deploy/scrape.sh         pembungkus scraper (baca .env)
 #   Caddyfile.domain         referensi config Caddy (disalin, tidak dipasang)
 #   .env.example             referensi env (TIDAK menyentuh .env asli)
 #   version.txt              commit SHA
@@ -133,6 +135,16 @@ if ! install -m 0755 "$SRC/gameport" "$DEP/gameport"; then
 fi
 ok "binary"
 
+if [ -f "$SRC/gameport-scraper" ]; then
+  if install -m 0755 "$SRC/gameport-scraper" "$DEP/gameport-scraper"; then
+    ok "gameport-scraper"
+  else
+    warn "gameport-scraper gagal dipasang (scrape terjadwal dilewati)"
+  fi
+else
+  warn "artifact tanpa gameport-scraper — lewati binary scraper"
+fi
+
 rm -rf "$DEP/static"
 mkdir -p "$DEP/static"
 if ! cp -a "$SRC/static/." "$DEP/static/"; then
@@ -235,7 +247,9 @@ if [ -f "$SRC/.env.example" ]; then
 fi
 
 mkdir -p "$DEP/deploy"
-for f in deploy.sh autodeploy.sh gameport-autodeploy.service gameport-autodeploy.timer; do
+for f in deploy.sh autodeploy.sh scrape.sh \
+         gameport-autodeploy.service gameport-autodeploy.timer \
+         gameport-scraper.service gameport-scraper.timer; do
   [ -f "$SRC/deploy/$f" ] || continue
   tmp="$DEP/deploy/.$f.new"
   cp "$SRC/deploy/$f" "$tmp" || { warn "$f gagal disalin"; continue; }

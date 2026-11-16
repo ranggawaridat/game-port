@@ -32,6 +32,9 @@ GitHub Actions  ── build binary linux/amd64 ──▶ GitHub Release (latest
 | `deploy/manager.sh` | VPS (container) | supervisor PostgreSQL + aplikasi |
 | `deploy/gameport-autodeploy.service` | VPS (host) | unit oneshot pemanggil `docker exec` |
 | `deploy/gameport-autodeploy.timer` | VPS (host) | timer tiap 2 menit |
+| `deploy/scrape.sh` | VPS (container) | jalankan `gameport-scraper` dengan DSN dari `.env` |
+| `deploy/gameport-scraper.service` | VPS (host) | unit oneshot scrape konten baru (draf) |
+| `deploy/gameport-scraper.timer` | VPS (host) | timer harian scrape |
 
 Path penting (di dalam container Hermes):
 
@@ -39,6 +42,7 @@ Path penting (di dalam container Hermes):
 /opt/data/workspace/deployed/game-port/          ← produksi
 ├── gameport                                     binary
 ├── gameport.prev                                binary sebelum deploy terakhir
+├── gameport-scraper                             binary scrape terjadwal
 ├── seed.sql
 ├── static/                                      admin.html, admin.css, admin.js
 ├── deploy/                                      script + unit (ikut ter-update)
@@ -174,7 +178,56 @@ systemctl list-timers gameport-autodeploy.timer
 
 Kalau nama container bukan `alpha-hermes`, edit `ExecStart` di unit.
 
-### 3.5 Pasang Caddy
+### 3.5 Pasang timer scraper (opsional)
+
+Scraper mengisi katalog dari beberapa situs port Android. Semua hasilnya masuk
+sebagai **draf** (`published=false`) dan baru tayang setelah ditinjau di panel
+admin. Timer ini terpisah dari auto-deploy dan tidak wajib dipasang.
+
+Unit dan script sudah ikut terpasang di folder deployed oleh langkah 3.3.
+
+```bash
+sudo cp /opt/alpha/hermes/workspace/deployed/game-port/deploy/gameport-scraper.service \
+        /etc/systemd/system/
+sudo cp /opt/alpha/hermes/workspace/deployed/game-port/deploy/gameport-scraper.timer \
+        /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now gameport-scraper.timer
+
+systemctl list-timers gameport-scraper.timer
+```
+
+Jadwal default: sekali sehari pukul 03:30 waktu host, dengan
+`RandomizedDelaySec=30min` agar beban keluar tidak menumpuk di detik yang sama.
+Ubah `OnCalendar` di unit timer kalau perlu jam lain.
+
+Uji manual tanpa menunggu jadwal:
+
+```bash
+# lewat systemd (sama seperti jadwal asli, log ke journal)
+sudo systemctl start gameport-scraper.service
+journalctl -u gameport-scraper.service -n 80 --no-pager
+
+# langsung di container, dengan flag tambahan
+docker exec -u hermes alpha-hermes bash -lc '
+  cd /opt/data/workspace/deployed/game-port
+  ./deploy/scrape.sh -dry-run          # tidak menulis apa pun
+  ./deploy/scrape.sh -only droidports  # satu sumber saja
+  ./deploy/scrape.sh -verbose
+'
+```
+
+Sumber diatur di tabel `scrape_sources` (kolom `enabled`, `max_items`, dan
+`kind`: `rss`, `playported`, atau `markdown`). Menambah situs yang sudah
+didukung salah satu `kind` cukup dengan satu `INSERT` — tidak perlu build
+ulang. Scraper mematuhi robots.txt dan `Crawl-delay` per host, memakai
+User-Agent yang jelas, dan tidak menulis `download_url` (draf hanya menunjuk
+`source_url`).
+
+Karena isinya selalu draf, kegagalan scrape tidak memengaruhi situs. Kalau
+timer dimatikan, katalog tetap jalan seperti biasa.
+
+### 3.6 Pasang Caddy
 
 Caddy berjalan di host, bukan di container. `Caddyfile.domain` ikut
 terpasang di folder deployed setiap deploy, tetapi **tidak** otomatis
@@ -239,6 +292,10 @@ docker exec -u hermes alpha-hermes /opt/data/gameport/manager.sh status
 # systemd (host)
 journalctl -u gameport-autodeploy.service -n 50 --no-pager
 systemctl status gameport-autodeploy.timer
+
+# scraper (kalau timer dipasang)
+journalctl -u gameport-scraper.service -n 80 --no-pager
+systemctl status gameport-scraper.timer
 ```
 
 Log auto-deploy diputar otomatis saat melewati ±5 MB (`autodeploy.log.1`).
@@ -284,9 +341,10 @@ SHA256SUMS
 version.txt
 ```
 
-Isi tarball: `gameport`, `seed.sql`, `static/admin.*`, `deploy/*.sh`,
-`deploy/gameport-autodeploy.*`, `Caddyfile.domain`, `.env.example`,
-`version.txt`. Tidak ada `.env` dan tidak ada `frontend/index.html`.
+Isi tarball: `gameport`, `gameport-scraper`, `seed.sql`, `static/admin.*`,
+`deploy/*.sh`, `deploy/gameport-autodeploy.*`, `deploy/gameport-scraper.*`,
+`Caddyfile.domain`, `.env.example`, `version.txt`. Tidak ada `.env` dan tidak
+ada `frontend/index.html`.
 
 Deploy manual dari artifact:
 

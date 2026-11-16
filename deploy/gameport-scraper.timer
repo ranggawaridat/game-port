@@ -1,0 +1,28 @@
+# =============================================================================
+# systemd timer — scrape konten baru sekali sehari
+#
+# Pasang bersama gameport-scraper.service:
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now gameport-scraper.timer
+#   systemctl list-timers gameport-scraper.timer
+#
+# Jadwal memakai zona waktu host. Ganti OnCalendar untuk jam lain, mis.
+#   OnCalendar=*-*-* 02:15:00
+#   OnCalendar=Mon,Fri *-*-* 03:30:00
+#
+# RandomizedDelaySec mencegah semua situs ditembak pada detik yang sama dan
+# menyebarkan beban keluar.
+# =============================================================================
+
+[Unit]
+Description=GamePort — jadwal scrape konten baru (harian)
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+RandomizedDelaySec=30min
+AccuracySec=5min
+Persistent=true
+Unit=gameport-scraper.service
+
+[Install]
+WantedBy=timers.target

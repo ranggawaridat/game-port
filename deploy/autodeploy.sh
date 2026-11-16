@@ -123,7 +123,8 @@ if ! tar -xzf "$TMP/$ASSET" -C "$TMP/pkg"; then
   exit 1
 fi
 # jangan bergantung pada umask saat ekstrak
-chmod +x "$TMP/pkg/gameport" "$TMP/pkg/deploy/deploy.sh" 2>/dev/null || true
+chmod +x "$TMP/pkg/gameport" "$TMP/pkg/gameport-scraper" \
+  "$TMP/pkg/deploy/deploy.sh" "$TMP/pkg/deploy/scrape.sh" 2>/dev/null || true
 if [ ! -f "$TMP/pkg/gameport" ] || [ ! -f "$TMP/pkg/deploy/deploy.sh" ]; then
   log "artifact tidak lengkap"
   exit 1
