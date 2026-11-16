@@ -116,6 +116,43 @@ CREATE TABLE IF NOT EXISTS port_platforms (
 );
 CREATE INDEX IF NOT EXISTS idx_pp_platform ON port_platforms(platform_slug);
 
+-- ---------- Scraping terjadwal (opsional, hasil selalu draf) ----------
+-- Satu baris = satu sumber. cmd/scraper membaca tabel ini, jadi menambah
+-- situs baru cukup INSERT selama `kind`-nya sudah didukung:
+--   rss       — feed RSS/Atom (mis. DroidPorts /rss.xml)
+--   playported— halaman daftar PlayPorted (filter Android)
+--   markdown  — tabel Markdown di GitHub (awesome-list)
+-- Hasil scrape disimpan dengan published=false untuk ditinjau di admin.
+CREATE TABLE IF NOT EXISTS scrape_sources (
+    slug          TEXT PRIMARY KEY,
+    name          TEXT NOT NULL,
+    kind          TEXT NOT NULL CHECK (kind IN ('rss','playported','markdown')),
+    url           TEXT NOT NULL,
+    enabled       BOOLEAN NOT NULL DEFAULT true,
+    category_slug TEXT NOT NULL REFERENCES categories(slug),
+    status_slug   TEXT NOT NULL REFERENCES statuses(slug),
+    max_items     INT NOT NULL DEFAULT 20,
+    last_run_at   TIMESTAMPTZ,
+    last_status   TEXT NOT NULL DEFAULT '',
+    last_message  TEXT NOT NULL DEFAULT '',
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Catatan item yang sudah pernah diambil. UNIQUE (source_slug, external_id)
+-- mencegah port yang sama dibuat ulang setiap kali cron berjalan.
+CREATE TABLE IF NOT EXISTS scrape_items (
+    id          BIGSERIAL PRIMARY KEY,
+    source_slug TEXT NOT NULL REFERENCES scrape_sources(slug) ON DELETE CASCADE,
+    external_id TEXT NOT NULL,
+    title       TEXT NOT NULL DEFAULT '',
+    url         TEXT NOT NULL DEFAULT '',
+    port_id     BIGINT REFERENCES ports(id) ON DELETE SET NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (source_slug, external_id)
+);
+CREATE INDEX IF NOT EXISTS idx_scrape_items_port ON scrape_items(port_id);
+CREATE INDEX IF NOT EXISTS idx_scrape_items_time ON scrape_items(created_at DESC);
+
 -- ---------- Analitik ----------
 CREATE TABLE IF NOT EXISTS events (
     id         BIGSERIAL PRIMARY KEY,
@@ -204,5 +241,19 @@ INSERT INTO categories (slug, name, urutan) VALUES
  ('classic',          'Port Klasik (Aktivitas Rendah)',      9)
 ON CONFLICT (slug) DO UPDATE
  SET name = EXCLUDED.name, urutan = EXCLUDED.urutan;
+
+-- Sumber scraping awal. ON CONFLICT DO NOTHING supaya perubahan yang
+-- dilakukan operator langsung di database tidak ditimpa setiap deploy.
+-- Semua hasil masuk sebagai draf (published=false) dengan status default
+-- 'alpha' sampai ditinjau di panel admin.
+INSERT INTO scrape_sources (slug, name, kind, url, category_slug, status_slug, max_items) VALUES
+ ('droidports', 'DroidPorts (RSS port baru & update)', 'rss',
+  'https://droidports.com/rss.xml', 'source-port', 'alpha', 20),
+ ('playported', 'PlayPorted (daftar port Android)', 'playported',
+  'https://playported.com/runs-on/android/', 'source-port', 'alpha', 20),
+ ('awesome-android-ports', 'awesome-android-native-ports (GitHub)', 'markdown',
+  'https://raw.githubusercontent.com/abduznik/awesome-android-native-ports/main/README.md',
+  'source-port', 'alpha', 20)
+ON CONFLICT (slug) DO NOTHING;
 
 COMMIT;

@@ -43,21 +43,30 @@ func HashPassword(p string) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// LoadDatabaseURL membangun DSN dari DATABASE_URL atau variabel GAMEDB_*.
+// Dipakai server dan cmd/scraper supaya keduanya membaca database yang sama.
+func LoadDatabaseURL() (string, error) {
+	if dsn := strings.TrimSpace(os.Getenv("DATABASE_URL")); dsn != "" {
+		return dsn, nil
+	}
+	host := envOr("GAMEDB_HOST", "db")
+	port := envOr("GAMEDB_PORT", "5432")
+	name := envOr("GAMEDB_NAME", "gamedb")
+	user := os.Getenv("GAMEDB_USER")
+	pass := os.Getenv("GAMEDB_PASSWORD")
+	if user == "" {
+		return "", fmt.Errorf("GAMEDB_USER kosong: set di environment atau pakai DATABASE_URL")
+	}
+	// Kredensial WAJIB di-escape: password sering mengandung ':' dan '/'.
+	return fmt.Sprintf("postgres://%s@%s:%s/%s?sslmode=disable",
+		url.UserPassword(user, pass).String(), host, port, name), nil
+}
+
 // Load membaca environment dan memvalidasi yang wajib.
 func Load() (*Config, error) {
-	dsn := os.Getenv("DATABASE_URL")
-	if dsn == "" {
-		host := envOr("GAMEDB_HOST", "db")
-		port := envOr("GAMEDB_PORT", "5432")
-		name := envOr("GAMEDB_NAME", "gamedb")
-		user := os.Getenv("GAMEDB_USER")
-		pass := os.Getenv("GAMEDB_PASSWORD")
-		if user == "" {
-			return nil, fmt.Errorf("GAMEDB_USER kosong: set di environment atau pakai DATABASE_URL")
-		}
-		// Kredensial WAJIB di-escape: password sering mengandung ':' dan '/'.
-		dsn = fmt.Sprintf("postgres://%s@%s:%s/%s?sslmode=disable",
-			url.UserPassword(user, pass).String(), host, port, name)
+	dsn, err := LoadDatabaseURL()
+	if err != nil {
+		return nil, err
 	}
 
 	origins := []string{"*"}
