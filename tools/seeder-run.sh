@@ -41,17 +41,28 @@ PY
 # satu putaran: tarik GitHub → SQL → terapkan ke database
 putaran() {
   log "──── mulai putaran ────"
-  if python3 /src/tools/seed-github.py --update -o /tmp/seed.sql; then
-    if psql -q -v ON_ERROR_STOP=1 -f /tmp/seed.sql; then
-      N=$(psql -tAc "SELECT count(*) FROM ports" 2>/dev/null)
-      log "OK — katalog sekarang ${N:-?} port"
-    else
-      log "GAGAL: psql menolak SQL"
-    fi
+  # sumber 1: rilis GitHub (repo port open source)
+  if python3 /src/tools/seed-github.py --update -o /tmp/seed-github.sql; then
+    psql -q -v ON_ERROR_STOP=1 -f /tmp/seed-github.sql \
+      && log "github: SQL diterapkan" \
+      || log "GAGAL: psql menolak SQL github"
   else
-    log "GAGAL: generator tidak menghasilkan SQL"
+    log "GAGAL: seed-github.py tidak menghasilkan SQL"
   fi
-  rm -f /tmp/seed.sql
+
+  # sumber 2: channel Telegram PortalGamerID
+  if python3 /src/tools/seed-telegram.py -o /tmp/seed-telegram.sql; then
+    psql -q -v ON_ERROR_STOP=1 -f /tmp/seed-telegram.sql \
+      && log "telegram: SQL diterapkan" \
+      || log "GAGAL: psql menolak SQL telegram"
+  else
+    log "GAGAL: seed-telegram.py tidak menghasilkan SQL"
+  fi
+
+  N=$(psql -tAc "SELECT count(*) FROM ports" 2>/dev/null)
+  D=$(psql -tAc "SELECT count(*) FROM ports WHERE published = false" 2>/dev/null)
+  log "OK — katalog ${N:-?} port (${D:-0} draf menunggu review)"
+  rm -f /tmp/seed-github.sql /tmp/seed-telegram.sql
 }
 
 log "seeder siap — jadwal harian ${SEED_HOUR_UTC}:00 UTC"
