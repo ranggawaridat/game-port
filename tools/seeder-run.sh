@@ -1,14 +1,18 @@
 #!/bin/sh
 # =============================================================================
-# seeder-run.sh — putaran harian katalog GamePort dari dalam container.
+# seeder-run.sh — penyegar katalog GamePort dari dalam container.
 #
-# Bukan cron: prosesnya menunggu sampai jam yang diminta (UTC), menjalankan
-# satu putaran, lalu tidur sampai jam yang sama besok. Tidur dihitung ulang
-# setiap putaran, jadi perubahan SEED_HOUR_UTC cukup dengan restart container.
+# Bukan cron: prosesnya menjalankan satu putaran saat container menyala
+# (SEED_RUN_ON_START), lalu menunggu sampai jam yang diminta (UTC) dan
+# mengulanginya setiap hari. Tidur dihitung ulang tiap putaran, jadi
+# mengubah SEED_HOUR_UTC cukup dengan restart container.
 #
 # Variabel (dari docker compose):
 #   PGHOST, PGUSER, PGDATABASE, PGPASSWORD  ← koneksi ke service db
-#   SEED_HOUR_UTC                            ← jam jalan, default 0 (07:00 WIB)
+#   SEED_HOUR_UTC                            ← jam jalan harian, default 0
+#                                              (00:00 UTC = 07:00 WIB)
+#   SEED_RUN_ON_START                        ← "false" = jangan jalan saat
+#                                              start, tunggu jam harian dulu
 # =============================================================================
 set -u
 
@@ -16,6 +20,7 @@ set -u
 : "${PGUSER:=gameport}"
 : "${PGDATABASE:=gamedb}"
 : "${SEED_HOUR_UTC:=0}"
+: "${SEED_RUN_ON_START:=true}"
 
 log() { printf '%s  %s\n' "$(date -u '+%F %T UTC')" "$*"; }
 
@@ -33,13 +38,8 @@ print(int(target - now))
 PY
 }
 
-log "seeder siap — putaran harian pada ${SEED_HOUR_UTC}:00 UTC"
-
-while true; do
-  s=$(detik_tunggu) || { log "GAGAL menghitung jadwal"; sleep 3600; continue; }
-  log "menunggu ${s} detik…"
-  sleep "$s"
-
+# satu putaran: tarik GitHub → SQL → terapkan ke database
+putaran() {
   log "──── mulai putaran ────"
   if python3 /src/tools/seed-github.py --update -o /tmp/seed.sql; then
     if psql -q -v ON_ERROR_STOP=1 -f /tmp/seed.sql; then
@@ -52,4 +52,18 @@ while true; do
     log "GAGAL: generator tidak menghasilkan SQL"
   fi
   rm -f /tmp/seed.sql
+}
+
+log "seeder siap — jadwal harian ${SEED_HOUR_UTC}:00 UTC"
+
+if [ "$SEED_RUN_ON_START" != "false" ]; then
+  log "putaran awal saat container start"
+  putaran
+fi
+
+while true; do
+  s=$(detik_tunggu) || { log "GAGAL menghitung jadwal"; sleep 3600; continue; }
+  log "menunggu ${s} detik sampai ${SEED_HOUR_UTC}:00 UTC…"
+  sleep "$s"
+  putaran
 done
